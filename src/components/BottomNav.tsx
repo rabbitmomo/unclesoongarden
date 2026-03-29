@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { Home, Compass, Camera, Sprout, MoreHorizontal } from "lucide-react";
-
+//test lovable
 const tabs = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/explore", icon: Compass, label: "Explore" },
