@@ -4,6 +4,7 @@ import TaskCard from "@/components/TaskCard";
 import StatusBadge from "@/components/StatusBadge";
 import UncleSoonGuide from "@/components/UncleSoonGuide";
 import TutorialSection from "@/components/TutorialSection";
+import HandReferenceSizeChecker from "@/components/HandReferenceSizeChecker";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Leaf } from "lucide-react";
@@ -170,8 +171,8 @@ const HomePage = () => {
         </div>
       )}
 
-      {/* Tutorial Section */}
-      <TutorialSection />
+      {/* RGB-Based Hand Reference Size Checker */}
+      <HandReferenceSizeChecker />
 
       {/* Plant Health Overview */}
       <div className="flex items-center justify-between mb-3">
