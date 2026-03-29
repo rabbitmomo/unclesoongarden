@@ -1,6 +1,6 @@
 import { Home, Leaf, Calendar, User } from "lucide-react";
 import { useState } from "react";
-
+//test lovable
 const navItems = [
   { icon: Home, label: "Home" },
   { icon: Leaf, label: "Plants" },
