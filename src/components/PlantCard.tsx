@@ -1,45 +1,41 @@
-import { Droplets, Sun } from "lucide-react";
+import StatusBadge from "./StatusBadge";
+import { ChevronRight } from "lucide-react";
 
 interface PlantCardProps {
   name: string;
   image: string;
-  water: string;
-  light: string;
-  category: string;
+  status: "healthy" | "attention" | "problem";
+  stage: string;
+  lastChecked?: string;
+  onClick?: () => void;
 }
 
-const PlantCard = ({ name, image, water, light, category }: PlantCardProps) => {
+const PlantCard = ({ name, image, status, stage, lastChecked, onClick }: PlantCardProps) => {
   return (
-    <div className="rounded-2xl bg-card overflow-hidden shadow-sm active:scale-[0.98] transition-transform">
-      <div className="aspect-square overflow-hidden">
-        <img
-          src={image}
-          alt={name}
-          loading="lazy"
-          width={512}
-          height={512}
-          className="w-full h-full object-cover"
-        />
-      </div>
-      <div className="p-3">
-        <span className="text-xs font-medium text-accent uppercase tracking-wide">
-          {category}
-        </span>
-        <h3 className="font-display text-base font-semibold text-foreground mt-0.5">
-          {name}
-        </h3>
-        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Droplets className="w-3.5 h-3.5 text-garden-moss" />
-            {water}
-          </span>
-          <span className="flex items-center gap-1">
-            <Sun className="w-3.5 h-3.5 text-garden-terracotta" />
-            {light}
-          </span>
+    <button
+      onClick={onClick}
+      className="w-full bg-card rounded-2xl p-4 card-shadow hover:card-shadow-hover flex items-center gap-4 active:scale-[0.98] transition-all text-left"
+    >
+      <img
+        src={image}
+        alt={name}
+        className="w-[72px] h-[72px] rounded-xl object-cover"
+        loading="lazy"
+        width={72}
+        height={72}
+      />
+      <div className="flex-1 min-w-0">
+        <h3 className="text-title text-foreground truncate">{name}</h3>
+        <p className="text-caption text-muted-foreground mt-0.5">{stage}</p>
+        {lastChecked && (
+          <p className="text-caption text-muted-foreground">Checked {lastChecked}</p>
+        )}
+        <div className="mt-1.5">
+          <StatusBadge status={status} size="sm" />
         </div>
       </div>
-    </div>
+      <ChevronRight size={20} className="text-muted-foreground flex-shrink-0" />
+    </button>
   );
 };
 

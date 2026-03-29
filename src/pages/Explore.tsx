@@ -1,0 +1,185 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Heart, ShoppingCart, Search, Plus, MessageCircle } from "lucide-react";
+import { toast } from "sonner";
+
+const POSTS = [
+  {
+    id: "1",
+    farmer: { id: "f1", name: "Ah Kow", avatar: "🧑‍🌾", location: "Johor Bahru" },
+    image: "🌶️",
+    caption: "My cili padi finally turning red! 45 days from seed 🔥",
+    likes: 23,
+    comments: 5,
+    daysAgo: 1,
+    tags: ["chili", "harvest"],
+  },
+  {
+    id: "2",
+    farmer: { id: "f2", name: "Mak Limah", avatar: "👩‍🌾", location: "Ipoh" },
+    image: "🍅",
+    caption: "Tomato harvest this week — 3kg from 2 plants! Uncle Soon's fertilizer advice really worked 💪",
+    likes: 41,
+    comments: 12,
+    daysAgo: 2,
+    tags: ["tomato", "harvest", "organic"],
+  },
+  {
+    id: "3",
+    farmer: { id: "f3", name: "Pak Ali", avatar: "👨‍🌾", location: "Penang" },
+    image: "🥬",
+    caption: "Kangkung growing so fast after the rain. Anyone want to trade seeds?",
+    likes: 15,
+    comments: 8,
+    daysAgo: 3,
+    tags: ["kangkung", "seeds"],
+  },
+  {
+    id: "4",
+    farmer: { id: "f1", name: "Ah Kow", avatar: "🧑‍🌾", location: "Johor Bahru" },
+    image: "🥔",
+    caption: "First potato harvest! Small but mighty. Next round I'll use bigger pots.",
+    likes: 18,
+    comments: 3,
+    daysAgo: 5,
+    tags: ["potato", "harvest"],
+  },
+  {
+    id: "5",
+    farmer: { id: "f2", name: "Mak Limah", avatar: "👩‍🌾", location: "Ipoh" },
+    image: "🥗",
+    caption: "Lettuce looking crispy and fresh! Perfect for salad tonight 🥗",
+    likes: 30,
+    comments: 7,
+    daysAgo: 4,
+    tags: ["lettuce", "organic"],
+  },
+  {
+    id: "6",
+    farmer: { id: "f3", name: "Pak Ali", avatar: "👨‍🌾", location: "Penang" },
+    image: "🫑",
+    caption: "Bell pepper experiment Week 6 — flowers starting to appear!",
+    likes: 12,
+    comments: 4,
+    daysAgo: 6,
+    tags: ["pepper", "experiment"],
+  },
+];
+
+const ExplorePage = () => {
+  const navigate = useNavigate();
+  const [likedPosts, setLikedPosts] = useState<Set<string>>(new Set());
+
+  const toggleLike = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLikedPosts((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleCart = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toast.success("Opened cart!");
+  };
+
+  const handleMessages = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    toast.success("Open messages!");
+  };
+
+  const handleNewPost = () => {
+    navigate("/create-post");
+  };
+
+  return (
+    <div className="min-h-screen pb-24 max-w-md mx-auto">
+      {/* Header */}
+      <div className="sticky top-0 z-30 bg-background/90 backdrop-blur-md px-4 pt-5 pb-3">
+        <h1 className="text-display mb-3">Explore</h1>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 bg-card rounded-xl px-3.5 py-2.5 card-shadow flex-1">
+            <Search size={18} className="text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search farmers, plants..."
+              className="bg-transparent text-body flex-1 outline-none placeholder:text-muted-foreground/60"
+            />
+          </div>
+          <button
+            onClick={(e) => handleMessages(e)}
+            className="w-10 h-10 rounded-xl bg-card card-shadow flex items-center justify-center active:scale-90 transition-transform"
+          >
+            <MessageCircle size={20} className="text-foreground" />
+          </button>
+          <button
+            onClick={(e) => handleCart(e)}
+            className="w-10 h-10 rounded-xl bg-card card-shadow flex items-center justify-center active:scale-90 transition-transform"
+          >
+            <ShoppingCart size={20} className="text-foreground" />
+          </button>
+        </div>
+      </div>
+
+      {/* 2-Column Grid Feed (小红书 style) */}
+      <div className="px-3 mt-2 grid grid-cols-2 gap-2.5">
+        {POSTS.map((post, idx) => (
+          <article
+            key={post.id}
+            className="bg-card rounded-2xl card-shadow overflow-hidden active:scale-[0.98] transition-transform cursor-pointer flex flex-col"
+            onClick={() => navigate(`/explore/post/${post.id}`)}
+          >
+            {/* Image area */}
+            <div className={`relative bg-secondary/50 flex items-center justify-center ${idx % 3 === 0 ? "h-48" : "h-40"}`}>
+              <span className="text-5xl">{post.image}</span>
+            </div>
+
+            {/* Content */}
+            <div className="p-2.5 flex flex-col flex-1">
+              <p className="text-sm font-medium leading-snug line-clamp-2">{post.caption}</p>
+
+              {/* Author row + likes */}
+              <div className="flex items-center justify-between mt-2 pt-1.5">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/explore/farmer/${post.farmer.id}`);
+                  }}
+                  className="flex items-center gap-1.5 active:opacity-70 transition-opacity"
+                >
+                  <span className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center text-xs">
+                    {post.farmer.avatar}
+                  </span>
+                  <span className="text-xs text-muted-foreground truncate max-w-[70px]">{post.farmer.name}</span>
+                </button>
+                <button
+                  onClick={(e) => toggleLike(post.id, e)}
+                  className="flex items-center gap-1 active:scale-95 transition-transform"
+                >
+                  <Heart
+                    size={14}
+                    className={likedPosts.has(post.id) ? "fill-destructive text-destructive" : "text-muted-foreground"}
+                  />
+                  <span className={`text-xs ${likedPosts.has(post.id) ? "text-destructive font-semibold" : "text-muted-foreground"}`}>
+                    {post.likes + (likedPosts.has(post.id) ? 1 : 0)}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {/* Floating Action Button - New Post */}
+      <button
+        onClick={handleNewPost}
+        className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg active:scale-90 transition-transform"
+      >
+        <Plus size={24} />
+      </button>
+    </div>
+  );
+};
+
+export default ExplorePage;
