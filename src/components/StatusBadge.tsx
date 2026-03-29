@@ -10,7 +10,7 @@ const config = {
 };
 
 const StatusBadge = ({ status, size = "md" }: StatusBadgeProps) => {
-  const { label, dot } = config[status];
+  const { label, dot } = config[status] ?? { label: status ?? "Unknown", dot: "bg-muted-foreground" };
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full bg-muted font-semibold ${
