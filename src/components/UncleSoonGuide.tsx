@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Camera, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import uncleSoonCharacter from "@/assets/uncle-soon-character.png";
-
+//test lovable
 const greetings = [
   { text: "Good morning!!! Let me check on your plants today 🌿", delay: 0 },
   { text: "Your Tomato plant hasn't been checked in 3 days.", delay: 3000 },
