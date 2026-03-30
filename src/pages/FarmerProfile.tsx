@@ -103,7 +103,7 @@ const FarmerProfilePage = () => {
     <div className="min-h-screen pb-24 max-w-md mx-auto">
       {/* Header */}
       <div className="sticky top-0 z-30 bg-background/90 backdrop-blur-md px-4 py-3 flex items-center gap-3">
-        <button onClick={() => navigate(-1)} className="p-1.5 rounded-lg active:bg-secondary transition-colors">
+        <button onClick={() => navigate("/")} className="p-1.5 rounded-lg active:bg-secondary transition-colors">
           <ArrowLeft size={22} />
         </button>
         <h1 className="text-body-lg font-semibold">{farmer.name}</h1>
