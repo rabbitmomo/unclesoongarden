@@ -102,7 +102,7 @@ const IdentifyResultsPage = () => {
       {/* Header */}
       <div className="sticky top-0 z-30 bg-background/90 backdrop-blur-md px-4 pt-5 pb-4 flex items-center justify-between border-b border-border">
         <button
-          onClick={() => navigate("/identify")}
+          onClick={() => navigate("/")}
           className="flex items-center gap-2 text-primary active:opacity-70"
         >
           <ArrowLeft size={20} /> Back
