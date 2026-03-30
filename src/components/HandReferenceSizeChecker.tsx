@@ -30,7 +30,7 @@ const HandReferenceSizeChecker = () => {
   const [measurement, setMeasurement] = useState<Measurement | null>(null);
   const [detectedObject, setDetectedObject] = useState<DetectedObject | null>(null);
   const [calibration, setCalibration] = useState<CalibrationData | null>(null);
-  const [mode, setMode] = useState<"idle" | "calibrate" | "measure">("idle");
+  const [mode, setMode] = useState<"calibrate" | "measure">("calibrate");
   const animationFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -396,7 +396,8 @@ const HandReferenceSizeChecker = () => {
       handWidth: handWidthCm,
       pixelWidth: detectedObject.width,
     });
-    setMode("measure");
+    setDetectedObject(null); // Clear hand detection
+    setMode("measure"); // Switch to measure mode
     toast.success(`✓ Calibrated! Hand width = ${handWidthCm}cm`);
   };
 

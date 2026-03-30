@@ -6,8 +6,8 @@ import { toast } from "sonner";
 const POSTS = [
   {
     id: "1",
-    farmer: { id: "f1", name: "Ah Kow", avatar: "🧑‍🌾", location: "Johor Bahru" },
-    image: "🌶️",
+    farmer: { id: "f1", name: "Ah Kow", avatar: "👨", location: "Johor Bahru" },
+    image: "/ciligrowing.jpg",
     caption: "My cili padi finally turning red! 45 days from seed 🔥",
     likes: 23,
     comments: 5,
@@ -17,7 +17,7 @@ const POSTS = [
   {
     id: "2",
     farmer: { id: "f2", name: "Mak Limah", avatar: "👩‍🌾", location: "Ipoh" },
-    image: "🍅",
+    image: "/tomatogrowing.jpg",
     caption: "Tomato harvest this week — 3kg from 2 plants! Uncle Soon's fertilizer advice really worked 💪",
     likes: 41,
     comments: 12,
@@ -27,7 +27,7 @@ const POSTS = [
   {
     id: "3",
     farmer: { id: "f3", name: "Pak Ali", avatar: "👨‍🌾", location: "Penang" },
-    image: "🥬",
+    image: "/kangkunggrowing.jpg",
     caption: "Kangkung growing so fast after the rain. Anyone want to trade seeds?",
     likes: 15,
     comments: 8,
@@ -36,8 +36,8 @@ const POSTS = [
   },
   {
     id: "4",
-    farmer: { id: "f1", name: "Ah Kow", avatar: "🧑‍🌾", location: "Johor Bahru" },
-    image: "🥔",
+    farmer: { id: "f1", name: "Ah Kow", avatar: "👨", location: "Johor Bahru" },
+    image: "/potatogrowing.jpg",
     caption: "First potato harvest! Small but mighty. Next round I'll use bigger pots.",
     likes: 18,
     comments: 3,
@@ -47,7 +47,7 @@ const POSTS = [
   {
     id: "5",
     farmer: { id: "f2", name: "Mak Limah", avatar: "👩‍🌾", location: "Ipoh" },
-    image: "🥗",
+    image: "/lettucegrowing.jpg",
     caption: "Lettuce looking crispy and fresh! Perfect for salad tonight 🥗",
     likes: 30,
     comments: 7,
@@ -57,7 +57,7 @@ const POSTS = [
   {
     id: "6",
     farmer: { id: "f3", name: "Pak Ali", avatar: "👨‍🌾", location: "Penang" },
-    image: "🫑",
+    image: "/bellpeppergrowing.jpg",
     caption: "Bell pepper experiment Week 6 — flowers starting to appear!",
     likes: 12,
     comments: 4,
@@ -131,8 +131,8 @@ const ExplorePage = () => {
             onClick={() => navigate(`/explore/post/${post.id}`)}
           >
             {/* Image area */}
-            <div className={`relative bg-secondary/50 flex items-center justify-center ${idx % 3 === 0 ? "h-48" : "h-40"}`}>
-              <span className="text-5xl">{post.image}</span>
+            <div className={`relative bg-secondary/50 flex items-center justify-center overflow-hidden ${idx % 3 === 0 ? "h-48" : "h-40"}`}>
+              <img src={post.image} alt={post.caption} className="w-full h-full object-cover" />
             </div>
 
             {/* Content */}

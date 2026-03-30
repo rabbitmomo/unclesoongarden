@@ -15,8 +15,8 @@ const POSTS_DATA: Record<string, {
   growthReport: { stage: string; day: number; totalDays: number; milestones: { label: string; day: number; status: string }[]; summary: string };
 }> = {
   "1": {
-    farmer: { id: "f1", name: "Ah Kow", avatar: "🧑‍🌾", location: "Johor Bahru" },
-    image: "🌶️",
+    farmer: { id: "f1", name: "Ah Kow", avatar: "👨", location: "Johor Bahru" },
+    image: "/ciligrowing.jpg",
     caption: "My cili padi finally turning red! 45 days from seed 🔥",
     fullContent: "Started from seeds I saved from last season's harvest. Used Uncle Soon's recommended soil mix — 60% compost, 30% peat moss, 10% perlite. Watered twice daily and placed in full sun. The first flowers appeared on Day 30, and now the fruits are turning red!",
     likes: 23,
@@ -42,7 +42,7 @@ const POSTS_DATA: Record<string, {
   },
   "2": {
     farmer: { id: "f2", name: "Mak Limah", avatar: "👩‍🌾", location: "Ipoh" },
-    image: "🍅",
+    image: "/tomatogrowing.jpg",
     caption: "Tomato harvest this week — 3kg from 2 plants!",
     fullContent: "Uncle Soon suggested I switch to a potassium-rich fertilizer during fruiting stage, and it made a huge difference. Each plant produced about 1.5kg of tomatoes.",
     likes: 41,
@@ -69,7 +69,7 @@ const POSTS_DATA: Record<string, {
   },
   "3": {
     farmer: { id: "f3", name: "Pak Ali", avatar: "👨‍🌾", location: "Penang" },
-    image: "🥬",
+    image: "/kangkunggrowing.jpg",
     caption: "Kangkung growing so fast after the rain.",
     fullContent: "The monsoon rain has been great for my kangkung bed. Growing in a raised bed with rich compost. Already harvested twice this month — about 2kg total.",
     likes: 15,
@@ -93,8 +93,8 @@ const POSTS_DATA: Record<string, {
     },
   },
   "4": {
-    farmer: { id: "f1", name: "Ah Kow", avatar: "🧑‍🌾", location: "Johor Bahru" },
-    image: "🥔",
+    farmer: { id: "f1", name: "Ah Kow", avatar: "👨", location: "Johor Bahru" },
+    image: "/potatogrowing.jpg",
     caption: "First potato harvest! Small but mighty.",
     fullContent: "Grew potatoes in a grow bag for the first time. The tubers are small (avg 50g each) but taste incredible — much sweeter than store-bought.",
     likes: 18,
@@ -115,6 +115,136 @@ const POSTS_DATA: Record<string, {
         { label: "Harvest", day: 90, status: "done" },
       ],
       summary: "🟡 Good first attempt. Avg tuber 50g (small — need deeper container 40cm+). No chemical residue. Soil temp was too high. Try again in Dec."
+    },
+  },
+  "7": {
+    farmer: { id: "f1", name: "Ah Kow", avatar: "👨", location: "Johor Bahru" },
+    image: "/duriangrowing.jpg",
+    caption: "Durian cluster getting bigger this week",
+    fullContent: "The fruits have started bulking up after steady rain and good potassium feeding. I am thinning smaller fruits to help the strongest ones size up.",
+    likes: 27,
+    comments: [
+      { user: "Mak Limah", text: "Nice cluster! When will you harvest?" },
+      { user: "Pak Ali", text: "Looks healthy and well supported." },
+    ],
+    daysAgo: 2,
+    tags: ["durian", "fruiting"],
+    growthReport: {
+      stage: "Fruiting",
+      day: 110,
+      totalDays: 150,
+      milestones: [
+        { label: "Flowering", day: 70, status: "done" },
+        { label: "Fruit Set", day: 85, status: "done" },
+        { label: "Bulking", day: 110, status: "done" },
+        { label: "Mature", day: 145, status: "upcoming" },
+        { label: "Harvest", day: 150, status: "upcoming" },
+      ],
+      summary: "Healthy fruit development. Maintain balanced watering and potassium feed. Continue branch support as weight increases."
+    },
+  },
+  "8": {
+    farmer: { id: "f1", name: "Ah Kow", avatar: "👨", location: "Johor Bahru" },
+    image: "/rambutangrowing.jpg",
+    caption: "Rambutan colors starting to pop",
+    fullContent: "The rambutan skins are changing from green to yellow-red, a good sign ripening has started. Sun exposure has been strong this week.",
+    likes: 33,
+    comments: [
+      { user: "Mak Limah", text: "Color gradient looks beautiful!" },
+      { user: "Pak Ali", text: "Almost ready already." },
+    ],
+    daysAgo: 3,
+    tags: ["rambutan", "ripening"],
+    growthReport: {
+      stage: "Ripening",
+      day: 95,
+      totalDays: 110,
+      milestones: [
+        { label: "Flowering", day: 50, status: "done" },
+        { label: "Fruit Set", day: 65, status: "done" },
+        { label: "Color Break", day: 90, status: "done" },
+        { label: "Sweet Spot", day: 105, status: "upcoming" },
+        { label: "Harvest", day: 110, status: "upcoming" },
+      ],
+      summary: "Good ripening progress with even color change. Keep moisture stable to prevent fruit split and protect from birds."
+    },
+  },
+  "9": {
+    farmer: { id: "f1", name: "Ah Kow", avatar: "👨", location: "Johor Bahru" },
+    image: "/cabbagegworing.jpg",
+    caption: "Cabbage heads firming up nicely",
+    fullContent: "These cabbage heads are filling out well and staying compact. I reduced nitrogen and focused on calcium to keep leaf quality strong.",
+    likes: 21,
+    comments: [
+      { user: "Mak Limah", text: "Very round and neat heads." },
+      { user: "Pak Ali", text: "Great spacing and clean leaves." },
+    ],
+    daysAgo: 4,
+    tags: ["cabbage", "vegetable"],
+    growthReport: {
+      stage: "Heading",
+      day: 62,
+      totalDays: 80,
+      milestones: [
+        { label: "Sowed", day: 1, status: "done" },
+        { label: "Transplant", day: 20, status: "done" },
+        { label: "Leaf Expansion", day: 40, status: "done" },
+        { label: "Head Formation", day: 62, status: "done" },
+        { label: "Harvest", day: 80, status: "upcoming" },
+      ],
+      summary: "Uniform head formation and healthy foliage. Continue regular watering and monitor for caterpillars near inner leaves."
+    },
+  },
+  "5": {
+    farmer: { id: "f2", name: "Mak Limah", avatar: "👩‍🌾", location: "Ipoh" },
+    image: "/lettucegrowing.jpg",
+    caption: "Lettuce looking crispy and fresh! Perfect for salad tonight 🥗",
+    fullContent: "Harvested this morning at peak freshness. The butterhead variety is much crispier than the loose leaf. Perfect for salads and wraps.",
+    likes: 30,
+    comments: [
+      { user: "Ah Kow", text: "Wah so green and fresh!" },
+      { user: "Pak Ali", text: "Can I buy some?" },
+    ],
+    daysAgo: 4,
+    tags: ["lettuce", "organic"],
+    growthReport: {
+      stage: "Harvested",
+      day: 35,
+      totalDays: 35,
+      milestones: [
+        { label: "Sowed", day: 1, status: "done" },
+        { label: "Sprouted", day: 5, status: "done" },
+        { label: "Growing", day: 20, status: "done" },
+        { label: "Mature", day: 30, status: "done" },
+        { label: "Harvest", day: 35, status: "done" },
+      ],
+      summary: "🟢 Perfect yield. Crisp texture maintained. Butterhead variety very successful in local climate. Will plant again next month."
+    },
+  },
+  "6": {
+    farmer: { id: "f3", name: "Pak Ali", avatar: "👨‍🌾", location: "Penang" },
+    image: "/bellpeppergrowing.jpg",
+    caption: "Bell pepper experiment Week 6 — flowers starting to appear!",
+    fullContent: "Week 6 of growth and I'm seeing the first flowers! The plants are healthy and growing strong. Expecting first peppers in about 3-4 weeks.",
+    likes: 12,
+    comments: [
+      { user: "Mak Limah", text: "How big are the plants now?" },
+      { user: "Ah Kow", text: "Looking good Pak Ali!" },
+    ],
+    daysAgo: 6,
+    tags: ["pepper", "experiment"],
+    growthReport: {
+      stage: "Flowering",
+      day: 42,
+      totalDays: 70,
+      milestones: [
+        { label: "Sowed", day: 1, status: "done" },
+        { label: "Sprouted", day: 8, status: "done" },
+        { label: "Growing", day: 28, status: "done" },
+        { label: "Flowering", day: 42, status: "done" },
+        { label: "Fruiting", day: 70, status: "upcoming" },
+      ],
+      summary: "🟢 Healthy plants. First flowers appearing at Week 6. Expected yield: 8-10 peppers per plant. No disease or pest issues detected."
     },
   },
 };
@@ -160,8 +290,8 @@ const PostDetailPage = () => {
       </div>
 
       {/* Image */}
-      <div className="mx-4 mt-4 rounded-2xl bg-secondary/50 h-64 flex items-center justify-center text-7xl relative">
-        {post.image}
+      <div className="mx-4 mt-4 rounded-2xl bg-secondary/50 h-64 flex items-center justify-center relative overflow-hidden">
+        <img src={post.image} alt={post.caption} className="w-full h-full object-cover" />
         <button
           onClick={() => toast.success("Added to cart!")}
           className="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg active:scale-90 transition-transform"

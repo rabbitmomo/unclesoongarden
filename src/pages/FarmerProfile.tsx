@@ -16,19 +16,25 @@ const FARMERS: Record<string, {
 }> = {
   f1: {
     name: "Ah Kow",
-    avatar: "🧑‍🌾",
+    avatar: "👨",
     location: "Johor Bahru",
     bio: "Backyard farmer since 2023. Growing chili, potato & herbs. All organic, no pesticide!",
     joinedMonths: 14,
     rating: 4.8,
     posts: [
-      { id: "1", image: "🌶️", caption: "Cili padi turning red — Day 45", daysAgo: 1 },
-      { id: "4", image: "🥔", caption: "First potato harvest!", daysAgo: 5 },
-      { id: "p3", image: "🌿", caption: "Basil cutting doing well in water", daysAgo: 12 },
-      { id: "p4", image: "🫑", caption: "Green pepper seedlings week 2", daysAgo: 18 },
+      { id: "1", image: "/ciligrowing.jpg", caption: "Cili padi turning red — Day 45", daysAgo: 1 },
+      { id: "7", image: "/duriangrowing.jpg", caption: "Durian cluster getting bigger this week", daysAgo: 2 },
+      { id: "8", image: "/rambutangrowing.jpg", caption: "Rambutan colors starting to pop", daysAgo: 3 },
+      { id: "9", image: "/cabbagegworing.jpg", caption: "Cabbage heads firming up nicely", daysAgo: 4 },
+      { id: "4", image: "/potatogrowing.jpg", caption: "First potato harvest!", daysAgo: 5 },
+      { id: "p3", image: "/lettucegrowing.jpg", caption: "Basil cutting doing well in water", daysAgo: 12 },
+      { id: "p4", image: "/bellpeppergrowing.jpg", caption: "Green pepper seedlings week 2", daysAgo: 18 },
     ],
     products: [
       { id: "pr1", name: "Fresh Cili Padi", emoji: "🌶️", price: "RM 8", unit: "100g", stock: "In stock", analysis: "🟢 Healthy — No pest damage detected. Rich red color indicates high capsaicin content. Harvested at optimal ripeness (Day 45). Uncle Soon rating: 9/10" },
+      { id: "pr8", name: "Village Durian", emoji: "🍈", price: "RM 28", unit: "kg", stock: "Limited", analysis: "🟢 Strong fruit development and healthy husk spikes. Good sugar build-up expected in 1-2 weeks. Keep fruits supported on branch to avoid drop damage. Uncle Soon rating: 8.8/10" },
+      { id: "pr9", name: "Fresh Rambutan", emoji: "🍒", price: "RM 12", unit: "500g", stock: "In stock", analysis: "🟢 Good ripening progression with bright shell color. Flesh moisture looks balanced, sweetness likely high at full red stage. Uncle Soon rating: 9.1/10" },
+      { id: "pr10", name: "Green Cabbage", emoji: "🥬", price: "RM 6", unit: "head", stock: "In stock", analysis: "🟢 Compact head structure and clean outer leaves. Low pest marks detected and good firmness for harvest window. Uncle Soon rating: 8.9/10" },
       { id: "pr2", name: "Organic Potato", emoji: "🥔", price: "RM 5", unit: "500g", stock: "Limited", analysis: "🟡 Good — Slightly smaller than average due to container growing. No chemical residue. Firm texture, good for frying. Uncle Soon rating: 7/10" },
       { id: "pr3", name: "Fresh Basil", emoji: "🌿", price: "RM 3", unit: "bunch", stock: "In stock", analysis: "🟢 Excellent — Strong aroma, dark green leaves. Grown hydroponically. No wilting detected. Uncle Soon rating: 9.5/10" },
     ],
@@ -147,8 +153,8 @@ const FarmerProfilePage = () => {
                   onClick={() => navigate(`/explore/post/${post.id}`)}
                   className="bg-card rounded-2xl card-shadow overflow-hidden active:scale-[0.98] transition-transform text-left flex flex-col"
                 >
-                  <div className="bg-secondary/50 h-32 flex items-center justify-center text-4xl">
-                    {post.image}
+                  <div className="bg-secondary/50 h-32 flex items-center justify-center text-4xl overflow-hidden">
+                    <img src={post.image} alt={post.caption} className="w-full h-full object-cover" />
                   </div>
                   <div className="p-2.5">
                     <p className="text-sm font-medium leading-snug line-clamp-2">{post.caption}</p>
