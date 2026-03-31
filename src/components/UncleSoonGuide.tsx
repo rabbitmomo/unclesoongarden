@@ -3,13 +3,8 @@ import { Camera, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import uncleSoonCharacter from "@/assets/uncle-soon-character.png";
 //test lovable
-const getTimeGreeting = () => {
-  const hour = new Date().getHours();
-  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-};
-
 const greetings = [
-  { text: `${getTimeGreeting()}!!! Let me check on your plants today 🌿`, delay: 0 },
+  { text: "Good afternoon!!! Let me check on your plants today 🌿", delay: 0 },
   { text: "Your Tomato plant hasn't been checked in 3 days.", delay: 3000 },
   { text: "Tap below and I'll run my AI tools to analyze your plant health 🧠", delay: 6000 },
 ];
