@@ -1,4 +1,5 @@
 import os
+import re
 import tempfile
 from pathlib import Path
 from typing import Optional
@@ -24,6 +25,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _build_analysis_failure_message(debug_info: Optional[dict], fallback_message: str) -> str:
+    if not debug_info:
+        return fallback_message
+
+    reason = str(debug_info.get("reason") or "")
+    if "RESOURCE_EXHAUSTED" in reason or "quota" in reason.lower():
+        retry_match = re.search(r"retryDelay'?:\s*'?(\d+)s", reason)
+        retry_seconds = retry_match.group(1) if retry_match else None
+        if retry_seconds:
+            return f"Gemini quota exceeded. Please try again in about {retry_seconds} seconds."
+        return "Gemini quota exceeded. Please try again later or upgrade your Gemini API plan."
+
+    return fallback_message
 
 
 def get_env_value(name: str) -> str:
@@ -70,6 +86,8 @@ class AnalyzeImageResponse(BaseModel):
 class AnalyzeImageDebugInfo(BaseModel):
     status: str
     reason: str | None = None
+    key_source: str | None = None
+    key_fingerprint: str | None = None
     model: str | None = None
     mime_type: str | None = None
     image_path: str | None = None
@@ -335,10 +353,15 @@ async def analyze_uploaded_image(file: UploadFile = File(...), debug: bool = Fal
                     "image_path": temp_path,
                     "mime_type": file.content_type,
                 }
+
+            failure_message = _build_analysis_failure_message(
+                last_debug_info,
+                "Analysis unavailable. Please try again.",
+            )
             return {
                 "has_plant": False,
                 "overall_status": None,
-                "overall_description": "Analysis unavailable. Please try again.",
+                "overall_description": failure_message,
                 "plant_name": None,
                 "debug": last_debug_info,
             }

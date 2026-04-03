@@ -1,4 +1,5 @@
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -14,11 +15,11 @@ SYSTEM_PROMPT = (
 )
 
 
-def get_gemini_api_key() -> str:
-    """Resolve Gemini API key from environment or local .env file."""
+def get_gemini_api_key_with_source() -> Tuple[str, str]:
+    """Resolve Gemini API key and indicate where it came from."""
     key = os.getenv("GEMINI_API_KEY") or os.getenv("GEMINI-API-KEY")
     if key:
-        return key
+        return key, "environment"
 
     env_path = Path(__file__).resolve().parents[1] / ".env"
     if env_path.exists():
@@ -31,9 +32,21 @@ def get_gemini_api_key() -> str:
             if name.strip() in {"GEMINI_API_KEY", "GEMINI-API-KEY"}:
                 parsed = value.strip().strip('"').strip("'")
                 if parsed:
-                    return parsed
+                    return parsed, "dotenv"
 
     raise ValueError("GEMINI_API_KEY not found in environment or .env")
+
+
+def get_gemini_api_key() -> str:
+    """Backward-compatible helper returning only the key."""
+    key, _ = get_gemini_api_key_with_source()
+    return key
+
+
+def _mask_key_fingerprint(key: str) -> str:
+    digest = hashlib.sha256(key.encode("utf-8")).hexdigest()[:12]
+    suffix = key[-4:] if len(key) >= 4 else "short"
+    return f"sha256:{digest}:last4:{suffix}"
 
 
 def _extract_first_json_object(raw_text: str) -> Optional[Dict[str, Any]]:
@@ -113,7 +126,9 @@ def analyze_crop_image(
     print(f"[analyze_image] Analyzing image: {image_path} | mime={mime_type} | model={model}")
 
     try:
-        key = get_gemini_api_key()
+        key, key_source = get_gemini_api_key_with_source()
+        debug_info["key_source"] = key_source
+        debug_info["key_fingerprint"] = _mask_key_fingerprint(key)
         client = genai.Client(api_key=key)
 
         with open(image_path, "rb") as image_file:
