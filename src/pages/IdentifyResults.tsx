@@ -48,6 +48,23 @@ interface LatestReportResponse {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
+const readJsonResponse = async <T,>(response: Response): Promise<T> => {
+  const responseText = await response.text();
+
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json") && responseText.trimStart().startsWith("<!doctype")) {
+    throw new Error(
+      "API returned HTML instead of JSON. Set VITE_API_BASE_URL to your backend URL or configure an /api proxy."
+    );
+  }
+
+  return JSON.parse(responseText) as T;
+};
+
 const toConfidencePercent = (value?: number | null): number | undefined => {
   if (value === undefined || value === null) return undefined;
   const numeric = Number(value);
@@ -100,11 +117,7 @@ const IdentifyResultsPage = () => {
           : `${API_BASE_URL}/api/ai-report/latest`;
 
         const response = await fetch(reportUrl);
-        if (!response.ok) {
-          throw new Error(`Request failed: ${response.status}`);
-        }
-
-        const payload: LatestReportResponse = await response.json();
+        const payload = await readJsonResponse<LatestReportResponse>(response);
 
         if (!payload.ok || !payload.report) {
           toast.error("No report found yet.");

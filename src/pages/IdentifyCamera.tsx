@@ -19,6 +19,24 @@ interface AnalyzeImageApiResponse {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
+const readJsonResponse = async <T,>(response: Response): Promise<T> => {
+  const responseText = await response.text();
+
+  if (!response.ok) {
+    console.error("Analyze image API error:", response.status, responseText);
+    throw new Error(`Analysis failed: ${response.status}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json") && responseText.trimStart().startsWith("<!doctype")) {
+    throw new Error(
+      "API returned HTML instead of JSON. Set VITE_API_BASE_URL to your backend URL or configure an /api proxy."
+    );
+  }
+
+  return JSON.parse(responseText) as T;
+};
+
 const IdentifyCameraPage = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,16 +95,7 @@ const IdentifyCameraPage = () => {
     const analyzeRequest = fetch(`${API_BASE_URL}/api/analyze-image`, {
       method: "POST",
       body: formData,
-    }).then(async (response) => {
-      const responseText = await response.text();
-
-      if (!response.ok) {
-        console.error("Analyze image API error:", response.status, responseText);
-        throw new Error(`Analysis failed: ${response.status}`);
-      }
-
-      return JSON.parse(responseText) as AnalyzeImageApiResponse;
-    });
+    }).then((response) => readJsonResponse<AnalyzeImageApiResponse>(response));
 
     // Animation-only progress while the request is running.
     const interval = setInterval(() => {
