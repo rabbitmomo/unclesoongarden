@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { forwardRef, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle, AlertCircle, Zap, Download, Share2 } from "lucide-react";
 import { toast } from "sonner";
@@ -94,7 +94,7 @@ const parseSignedPercentFromText = (text?: string | null): number | undefined =>
   return numeric;
 };
 
-const IdentifyResultsPage = () => {
+const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
   const navigate = useNavigate();
   const location = useLocation();
   const requestedOverallStatus = (
@@ -203,7 +203,7 @@ const IdentifyResultsPage = () => {
   };
 
   return (
-    <div className="min-h-screen pb-24 max-w-md mx-auto bg-background">
+    <div ref={ref} className="min-h-screen pb-24 max-w-md mx-auto bg-background">
       {/* Header */}
       <div className="sticky top-0 z-30 bg-background/90 backdrop-blur-md px-4 pt-5 pb-4 flex items-center justify-between border-b border-border">
         <button
@@ -403,6 +403,8 @@ const IdentifyResultsPage = () => {
       </div>
     </div>
   );
-};
+});
+
+IdentifyResultsPage.displayName = "IdentifyResultsPage";
 
 export default IdentifyResultsPage;
