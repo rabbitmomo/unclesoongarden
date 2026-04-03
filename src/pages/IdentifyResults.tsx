@@ -1,4 +1,5 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle, AlertCircle, Zap, Download, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import uncleSoon from "@/assets/uncle-soon.png";
@@ -8,86 +9,176 @@ interface AnalysisResult {
   toolName: string;
   result: string;
   confidence?: number;
+  metricPercent?: number;
+  metricLabel?: string;
+  metricColorClass?: string;
+  showModelConfidence?: boolean;
   severity: "good" | "warning" | "danger";
   details: string;
 }
 
+interface Recommendation {
+  action: string;
+  reason: string;
+  priority: "high" | "medium" | "low";
+}
+
+interface LatestReportResponse {
+  ok: boolean;
+  report: {
+    id: string;
+    image_url?: string | null;
+    overall_status?: string | null;
+    uncle_soon_message?: string | null;
+  } | null;
+  analysis_results: Array<{
+    icon?: string | null;
+    tool_name: string;
+    result_text: string;
+    confidence?: number | null;
+    severity: "good" | "warning" | "danger";
+    details?: string | null;
+  }>;
+  recommendations: Array<{
+    action: string;
+    reason: string;
+    priority: "high" | "medium" | "low";
+  }>;
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8010";
+
+const toConfidencePercent = (value?: number | null): number | undefined => {
+  if (value === undefined || value === null) return undefined;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return undefined;
+
+  // Accept both 0-1 and 0-100 inputs, then clamp to valid percent bounds.
+  const percent = numeric <= 1 ? numeric * 100 : numeric;
+  return Math.max(0, Math.min(100, percent));
+};
+
+const parsePercentFromText = (text?: string | null): number | undefined => {
+  if (!text) return undefined;
+  const match = text.match(/(\d+(?:\.\d+)?)\s*%/);
+  if (!match) return undefined;
+  const numeric = Number(match[1]);
+  if (!Number.isFinite(numeric)) return undefined;
+  return Math.max(0, Math.min(100, numeric));
+};
+
+const parseSignedPercentFromText = (text?: string | null): number | undefined => {
+  if (!text) return undefined;
+  const match = text.match(/([+-]?\d+(?:\.\d+)?)\s*%/);
+  if (!match) return undefined;
+  const numeric = Number(match[1]);
+  if (!Number.isFinite(numeric)) return undefined;
+  return numeric;
+};
+
 const IdentifyResultsPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const requestedOverallStatus = (
+    (location.state as { overallStatus?: "good" | "warning" | "danger" | null } | null)
+      ?.overallStatus ||
+    ""
+  )
+    .toString()
+    .toLowerCase();
+  const [loading, setLoading] = useState(true);
+  const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [uncleSoonMessage, setUncleSoonMessage] = useState("");
+  const [overallStatus, setOverallStatus] = useState("good");
 
-  const analysisResults: AnalysisResult[] = [
-    {
-      icon: "🍎",
-      toolName: "Ripeness Detection",
-      result: "72% Unripe",
-      confidence: 94,
-      severity: "warning",
-      details: "Your fruit needs 5-7 more days to reach optimal harvest ripeness. Current size and color suggest it's still in the development phase.",
-    },
-    {
-      icon: "🍃",
-      toolName: "Disease Detection",
-      result: "No Disease Found",
-      confidence: 98,
-      severity: "good",
-      details: "Excellent news! Leaves show no signs of fungal, bacterial, or viral infections. Keep maintaining current care practices.",
-    },
-    {
-      icon: "🐛",
-      toolName: "Pest Detection",
-      result: "Low Risk",
-      confidence: 96,
-      severity: "good",
-      details: "No aphids, mites, whiteflies, or other common pests detected. Your plant is pest-free!",
-    },
-    {
-      icon: "💧",
-      toolName: "Water Stress Analysis",
-      result: "Slightly Dry",
-      confidence: 87,
-      severity: "warning",
-      details: "Leaf edges showing minor curl indicating slight water stress. Recommend watering in the next 6-12 hours.",
-    },
-    {
-      icon: "🌦️",
-      toolName: "Weather Integration",
-      result: "Rain Expected PM",
-      severity: "good",
-      details: "72% chance of rain this afternoon in your region. Skip evening watering and let nature hydrate instead.",
-    },
-    {
-      icon: "📈",
-      toolName: "Growth Tracking",
-      result: "+12% Growth",
-      confidence: 91,
-      severity: "good",
-      details: "Strong growth rate! Compared to 3 days ago, your plant has grown 12%. Continue current nutrition schedule.",
-    },
-  ];
+  useEffect(() => {
+    const fetchLatestReport = async () => {
+      try {
+        const reportUrl = requestedOverallStatus
+          ? `${API_BASE_URL}/api/ai-report/latest?overall_status=${encodeURIComponent(requestedOverallStatus)}`
+          : `${API_BASE_URL}/api/ai-report/latest`;
 
-  const recommendations = [
-    {
-      action: "Water your plant this morning",
-      reason: "Soil moisture is low & rain may come later — morning watering is best",
-      priority: "high" as const,
-    },
-    {
-      action: "Do not harvest yet",
-      reason: "Ripeness at 72% — wait 5-7 more days for optimal flavor",
-      priority: "medium" as const,
-    },
-    {
-      action: "Skip evening watering",
-      reason: "72% rain probability in the afternoon will naturally hydrate",
-      priority: "medium" as const,
-    },
-    {
-      action: "Check again in 2 days",
-      reason: "Growth is on track, no disease or pest issues found",
-      priority: "low" as const,
-    },
-  ];
+        const response = await fetch(reportUrl);
+        if (!response.ok) {
+          throw new Error(`Request failed: ${response.status}`);
+        }
+
+        const payload: LatestReportResponse = await response.json();
+
+        if (!payload.ok || !payload.report) {
+          toast.error("No report found yet.");
+          return;
+        }
+
+        setAnalysisResults(
+          (payload.analysis_results || []).map((item) => {
+            const confidence = toConfidencePercent(item.confidence);
+            const ripenessPercent = parsePercentFromText(item.result_text);
+            const growthSignedPercent = parseSignedPercentFromText(item.result_text);
+            const toolNameLower = item.tool_name.toLowerCase();
+            const isRipenessTool = toolNameLower.includes("ripeness");
+            const isGrowthTool = toolNameLower.includes("growth");
+            const isConfidenceTextOnlyTool =
+              toolNameLower.includes("disease") ||
+              toolNameLower.includes("pest") ||
+              toolNameLower.includes("water stress");
+
+            let metricPercent = confidence;
+            let metricLabel = "Confidence";
+            let metricColorClass = "bg-green-700";
+            let showModelConfidence = false;
+
+            if (isRipenessTool) {
+              metricPercent = ripenessPercent;
+              metricLabel = "Ripeness";
+              showModelConfidence = true;
+            } else if (isGrowthTool && growthSignedPercent !== undefined) {
+              metricPercent = Math.min(100, Math.max(0, Math.abs(growthSignedPercent)));
+              metricLabel = "Growth Change";
+              metricColorClass = growthSignedPercent < 0 ? "bg-red-600" : "bg-green-700";
+              showModelConfidence = true;
+            } else if (isConfidenceTextOnlyTool) {
+              metricPercent = undefined;
+              showModelConfidence = true;
+            }
+
+            return {
+              icon: item.icon || "🌱",
+              toolName: item.tool_name,
+              result: item.result_text,
+              confidence,
+              metricPercent,
+              metricLabel,
+              metricColorClass,
+              showModelConfidence,
+              severity: item.severity,
+              details: item.details || "",
+            };
+          })
+        );
+
+        setRecommendations(payload.recommendations || []);
+        setUncleSoonMessage(payload.report.uncle_soon_message || "");
+        setOverallStatus(payload.report.overall_status || "good");
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to fetch latest report.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLatestReport();
+  }, [requestedOverallStatus]);
+
+  const renderedResults = analysisResults;
+  const renderedRecommendations = recommendations;
+  const overallLabel = useMemo(() => {
+    if (overallStatus.toLowerCase() === "good") return "Good";
+    if (overallStatus.toLowerCase() === "warning") return "Warning";
+    return overallStatus;
+  }, [overallStatus]);
 
   const handleDownloadReport = () => {
     toast.success("Report downloaded as PDF! 📄");
@@ -121,28 +212,32 @@ const IdentifyResultsPage = () => {
             <div>
               <p className="text-label font-semibold text-foreground">Analysis Complete!</p>
               <p className="text-caption text-muted-foreground mt-1">
-                6 AI tools have analyzed your plant. Overall health: Good ✓
+                {loading
+                  ? "Loading latest AI report..."
+                  : `${renderedResults.length} AI tools have analyzed your plant. Overall health: ${overallLabel} ✓`}
               </p>
             </div>
           </div>
         </div>
 
         {/* Uncle Soon Message */}
-        <div className="bg-card rounded-2xl p-5 card-shadow flex items-start gap-3">
-          <img
-            src={uncleSoon}
-            alt="Uncle Soon"
-            className="w-11 h-11 rounded-full border-2 border-primary flex-shrink-0"
-            width={44}
-            height={44}
-          />
-          <div>
-            <p className="text-label text-primary">Uncle Soon says:</p>
-            <p className="text-body text-foreground mt-1">
-              Your plant is doing well! Just needs a bit of water soon and some patience for ripening. Keep up the good work! 🌱
-            </p>
+        {uncleSoonMessage && (
+          <div className="bg-card rounded-2xl p-5 card-shadow flex items-start gap-3">
+            <img
+              src={uncleSoon}
+              alt="Uncle Soon"
+              className="w-11 h-11 rounded-full border-2 border-primary flex-shrink-0"
+              width={44}
+              height={44}
+            />
+            <div>
+              <p className="text-label text-primary">Uncle Soon says:</p>
+              <p className="text-body text-foreground mt-1">
+                {uncleSoonMessage}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Detailed Results - Horizontal Scrollable Cards */}
         <div className="space-y-4">
@@ -151,11 +246,19 @@ const IdentifyResultsPage = () => {
           {/* Scrollable Analysis Cards */}
           <div className="overflow-x-auto scrollbar-visible pb-2">
             <div className="flex gap-4 min-w-min">
-              {analysisResults.map((result, idx) => (
-                <div
-                  key={idx}
-                  className="flex-shrink-0 w-80 bg-card rounded-2xl p-5 card-shadow space-y-4 border border-border"
-                >
+              {renderedResults.map((result, idx) => {
+                const confidencePercent =
+                  result.confidence !== undefined ? Math.round(result.confidence) : undefined;
+                const metricPercent =
+                  result.metricPercent !== undefined ? Math.round(result.metricPercent) : undefined;
+                const metricLabel = result.metricLabel || "Confidence";
+                const metricColorClass = result.metricColorClass || "bg-green-700";
+
+                return (
+                  <div
+                    key={idx}
+                    className="flex-shrink-0 w-80 bg-card rounded-2xl p-5 card-shadow space-y-4 border border-border"
+                  >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-title text-foreground">{result.toolName}</p>
@@ -174,19 +277,30 @@ const IdentifyResultsPage = () => {
                     </div>
                   </div>
 
-                  {result.confidence !== undefined && (
+                  {metricPercent !== undefined && (
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-caption text-muted-foreground">Confidence</span>
-                        <span className="text-label font-semibold text-primary">{result.confidence}%</span>
+                        <span className="text-caption text-muted-foreground">{metricLabel}</span>
+                        <span className="text-label font-semibold text-primary">{metricPercent}%</span>
                       </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-primary to-primary/60 rounded-full"
-                          style={{ width: `${result.confidence}%` }}
+                          className={`h-full rounded-full ${metricColorClass}`}
+                          style={{ width: `${metricPercent}%` }}
                         />
                       </div>
+                      {result.showModelConfidence && confidencePercent !== undefined && (
+                        <p className="text-caption text-muted-foreground mt-1">
+                          Model confidence: {confidencePercent}%
+                        </p>
+                      )}
                     </div>
+                  )}
+
+                  {metricPercent === undefined && result.showModelConfidence && confidencePercent !== undefined && (
+                    <p className="text-caption text-muted-foreground">
+                      Model confidence: {confidencePercent}%
+                    </p>
                   )}
 
                   <div className="bg-secondary rounded-lg p-3">
@@ -215,8 +329,9 @@ const IdentifyResultsPage = () => {
                           : "Immediate Action Required"}
                     </span>
                   </div>
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -224,7 +339,7 @@ const IdentifyResultsPage = () => {
         {/* Recommended Actions */}
         <div className="space-y-3">
           <p className="text-label font-semibold text-foreground">🎯 What You Should Do</p>
-          {recommendations.map((rec, idx) => (
+          {renderedRecommendations.map((rec, idx) => (
             <div
               key={idx}
               className={`rounded-xl p-3 border-l-4 ${
