@@ -2,7 +2,7 @@ import argparse
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import google.genai as genai
 
@@ -66,9 +66,20 @@ def _extract_first_json_object(raw_text: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def _truncate_debug_text(text: Optional[str], limit: int = 1500) -> str:
+    value = (text or "").strip()
+    if len(value) <= limit:
+        return value
+    return f"{value[:limit]}... [truncated {len(value) - limit} chars]"
+
+
 def analyze_crop_image(
-    image_path: str, custom_prompt: Optional[str] = None, model: str = MODEL_NAME, mime_type: str = "image/jpeg"
-) -> Optional[Dict[str, Any]]:
+    image_path: str,
+    custom_prompt: Optional[str] = None,
+    model: str = MODEL_NAME,
+    mime_type: str = "image/jpeg",
+    debug: bool = False,
+) -> Tuple[Optional[Dict[str, Any]], Dict[str, Any]]:
     """
     Analyze a crop/plant image using Gemini vision API.
     
@@ -79,17 +90,27 @@ def analyze_crop_image(
         mime_type: MIME type of the image (e.g. 'image/jpeg', 'image/png')
         
     Returns:
+        tuple: (result, debug_info)
         dict: Structured result with keys:
             - has_plant (bool)
             - overall_status ("good"|"warning"|"danger" or null)
             - overall_description (string or null)
             - plant_name (string or null)
     """
-    if not os.path.exists(image_path):
-        print(f"Error: Image file not found at {image_path}")
-        return None
+    debug_info: Dict[str, Any] = {
+        "image_path": image_path,
+        "mime_type": mime_type,
+        "model": model,
+        "status": "started",
+    }
 
-    print(f"Analyzing image: {image_path}")
+    if not os.path.exists(image_path):
+        debug_info["status"] = "missing_image"
+        debug_info["reason"] = f"Image file not found at {image_path}"
+        print(f"[analyze_image] {debug_info['reason']}")
+        return None, debug_info
+
+    print(f"[analyze_image] Analyzing image: {image_path} | mime={mime_type} | model={model}")
 
     try:
         key = get_gemini_api_key()
@@ -97,6 +118,9 @@ def analyze_crop_image(
 
         with open(image_path, "rb") as image_file:
             image_data = image_file.read()
+
+        debug_info["image_bytes"] = len(image_data)
+        print(f"[analyze_image] Loaded {len(image_data)} bytes from image")
 
         analysis_prompt = custom_prompt or (
             f"{SYSTEM_PROMPT}\n\n"
@@ -125,29 +149,44 @@ def analyze_crop_image(
             ],
         )
 
-        print(f"Gemini response text: {response.text}")
+        response_text = response.text or ""
+        debug_info["raw_response"] = _truncate_debug_text(response_text)
+        print(f"[analyze_image] Gemini response text: {debug_info['raw_response']}")
         parsed = _extract_first_json_object(response.text or "")
         if not parsed:
-            print("Image analysis failed: model did not return valid JSON")
-            return None
+            debug_info["status"] = "invalid_json"
+            debug_info["reason"] = "Model did not return valid JSON"
+            print("[analyze_image] Image analysis failed: model did not return valid JSON")
+            return None, debug_info
+
+        debug_info["parsed_json"] = parsed
 
         has_plant = bool(parsed.get("has_plant", False))
         overall_status = parsed.get("overall_status")
         plant_name = parsed.get("plant_name")
         overall_description = parsed.get("overall_description")
 
+        debug_info["parsed_has_plant"] = has_plant
+        debug_info["parsed_overall_status"] = overall_status
+        debug_info["parsed_plant_name"] = plant_name
+        debug_info["parsed_overall_description"] = overall_description
+
         if not has_plant:
+            debug_info["status"] = "no_plant"
+            debug_info["reason"] = "Gemini classified the image as not containing a plant"
             result = {
                 "has_plant": False,
                 "overall_status": None,
                 "overall_description": "No plant detected in image.",
                 "plant_name": None,
             }
-            print("Analysis complete. No plant detected.\n")
-            return result
+            print("[analyze_image] Analysis complete. No plant detected.\n")
+            return result, debug_info
 
         overall_status = (str(overall_status).strip().lower() if overall_status is not None else "")
         if overall_status not in {"good", "warning", "danger"}:
+            debug_info["status"] = "normalized_status"
+            debug_info["reason"] = f"Invalid overall_status '{overall_status}', normalized to warning"
             overall_status = "warning"
 
         plant_name = str(plant_name).strip().lower() if plant_name is not None else ""
@@ -179,11 +218,16 @@ def analyze_crop_image(
             "overall_description": overall_description,
             "plant_name": plant_name,
         }
-        print("Analysis complete.\n")
-        return result
+        debug_info["status"] = "success"
+        debug_info["reason"] = "Analysis completed successfully"
+        debug_info["result"] = result
+        print(f"[analyze_image] Analysis complete: {result}\n")
+        return result, debug_info
     except Exception as e:
-        print(f"Image analysis failed: {e}")
-        return None
+        debug_info["status"] = "exception"
+        debug_info["reason"] = str(e)
+        print(f"[analyze_image] Image analysis failed: {e}")
+        return None, debug_info
 
 
 def main():
@@ -201,10 +245,12 @@ def main():
     )
     args = parser.parse_args()
 
-    result = analyze_crop_image(args.image_path, args.prompt, args.model)
+    result, debug_info = analyze_crop_image(args.image_path, args.prompt, args.model, debug=True)
     if result:
         print("=== ANALYSIS RESULT ===\n")
         print(json.dumps(result, indent=2))
+        print("=== DEBUG INFO ===\n")
+        print(json.dumps(debug_info, indent=2))
     else:
         raise SystemExit(1)
 

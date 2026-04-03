@@ -67,6 +67,26 @@ class AnalyzeImageResponse(BaseModel):
     plant_name: str | None
 
 
+class AnalyzeImageDebugInfo(BaseModel):
+    status: str
+    reason: str | None = None
+    model: str | None = None
+    mime_type: str | None = None
+    image_path: str | None = None
+    image_bytes: int | None = None
+    raw_response: str | None = None
+    parsed_json: dict | None = None
+    parsed_has_plant: bool | None = None
+    parsed_overall_status: str | None = None
+    parsed_plant_name: str | None = None
+    parsed_overall_description: str | None = None
+    result: dict | None = None
+
+
+class AnalyzeImageResponseWithDebug(AnalyzeImageResponse):
+    debug: AnalyzeImageDebugInfo | None = None
+
+
 @app.get("/")
 def read_root():
     """Root endpoint."""
@@ -268,8 +288,8 @@ def debug_list_reports():
         raise HTTPException(status_code=500, detail=f"Failed to list reports: {exc}")
 
 
-@app.post("/api/analyze-image", response_model=AnalyzeImageResponse)
-async def analyze_uploaded_image(file: UploadFile = File(...)):
+@app.post("/api/analyze-image", response_model=AnalyzeImageResponseWithDebug)
+async def analyze_uploaded_image(file: UploadFile = File(...), debug: bool = False):
     """Analyze uploaded image and return only plant existence, status, and one plant name."""
     try:
         if not file.content_type or not file.content_type.startswith("image/"):
@@ -282,17 +302,20 @@ async def analyze_uploaded_image(file: UploadFile = File(...)):
 
         result = None
         last_error = None
+        last_debug_info = None
         try:
             for attempt in range(2):
                 try:
-                    print(f"Analyzing image attempt {attempt + 1}/2 with MIME type: {file.content_type}")
-                    result = analyze_crop_image(temp_path, mime_type=file.content_type)
+                    print(f"[analyze_image] Attempt {attempt + 1}/2 | mime={file.content_type} | debug={debug}")
+                    result, debug_info = analyze_crop_image(temp_path, mime_type=file.content_type, debug=debug)
+                    last_debug_info = debug_info
+                    print(f"[analyze_image] Attempt {attempt + 1}/2 debug: {debug_info}")
                     if result:
-                        print(f"Analysis succeeded: {result}")
+                        print(f"[analyze_image] Analysis succeeded: {result}")
                         break
                 except Exception as exc:
                     last_error = exc
-                    print(f"Attempt {attempt + 1} failed: {exc}")
+                    print(f"[analyze_image] Attempt {attempt + 1} failed: {exc}")
                     result = None
         finally:
             try:
@@ -302,12 +325,15 @@ async def analyze_uploaded_image(file: UploadFile = File(...)):
 
         if not result:
             if last_error is not None:
-                print(f"Image analysis returned no result after retry: {last_error}")
+                print(f"[analyze_image] Image analysis returned no result after retry: {last_error}")
+            if last_debug_info is not None:
+                print(f"[analyze_image] Last debug info: {last_debug_info}")
             return {
                 "has_plant": False,
                 "overall_status": None,
                 "overall_description": "Analysis unavailable. Please try again.",
                 "plant_name": None,
+                "debug": last_debug_info if debug else None,
             }
 
         return {
@@ -315,6 +341,7 @@ async def analyze_uploaded_image(file: UploadFile = File(...)):
             "overall_status": result.get("overall_status"),
             "overall_description": result.get("overall_description"),
             "plant_name": result.get("plant_name"),
+            "debug": last_debug_info if debug else None,
         }
     except HTTPException:
         raise
