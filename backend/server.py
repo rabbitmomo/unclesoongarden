@@ -328,12 +328,19 @@ async def analyze_uploaded_image(file: UploadFile = File(...), debug: bool = Fal
                 print(f"[analyze_image] Image analysis returned no result after retry: {last_error}")
             if last_debug_info is not None:
                 print(f"[analyze_image] Last debug info: {last_debug_info}")
+            if last_debug_info is None:
+                last_debug_info = {
+                    "status": "unknown_failure",
+                    "reason": str(last_error) if last_error is not None else "No debug info was produced by analyzer",
+                    "image_path": temp_path,
+                    "mime_type": file.content_type,
+                }
             return {
                 "has_plant": False,
                 "overall_status": None,
                 "overall_description": "Analysis unavailable. Please try again.",
                 "plant_name": None,
-                "debug": last_debug_info if debug else None,
+                "debug": last_debug_info,
             }
 
         return {
@@ -341,7 +348,7 @@ async def analyze_uploaded_image(file: UploadFile = File(...), debug: bool = Fal
             "overall_status": result.get("overall_status"),
             "overall_description": result.get("overall_description"),
             "plant_name": result.get("plant_name"),
-            "debug": last_debug_info if debug else None,
+            "debug": last_debug_info,
         }
     except HTTPException:
         raise
