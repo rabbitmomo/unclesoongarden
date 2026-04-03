@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle, AlertCircle, Zap, Download, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import uncleSoon from "@/assets/uncle-soon.png";
+import { getApiBaseUrl } from "@/lib/api-base-url";
 
 interface AnalysisResult {
   icon: string;
@@ -46,7 +47,7 @@ interface LatestReportResponse {
   }>;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const API_BASE_URL = getApiBaseUrl();
 
 const readJsonResponse = async <T,>(response: Response): Promise<T> => {
   const responseText = await response.text();

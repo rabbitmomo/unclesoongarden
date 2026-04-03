@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Image, Camera, X, Zap } from "lucide-react";
 import { toast } from "sonner";
+import { getApiBaseUrl } from "@/lib/api-base-url";
 
 type IdentifyMode = "source" | "preview" | "analyzing";
 
@@ -17,7 +18,7 @@ interface AnalyzeImageApiResponse {
   plant_name: string | null;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
+const API_BASE_URL = getApiBaseUrl();
 
 const readJsonResponse = async <T,>(response: Response): Promise<T> => {
   const responseText = await response.text();
