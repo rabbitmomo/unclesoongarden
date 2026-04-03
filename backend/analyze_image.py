@@ -8,7 +8,11 @@ from typing import Any, Dict, Optional, Tuple
 import google.genai as genai
 
 
-DEFAULT_MODEL_NAME = "gemini-3-flash"
+DEFAULT_MODEL_NAME = "gemini-2.5-flash"
+FALLBACK_MODELS = [
+    "gemini-2.5-flash",
+    "gemini-1.5-flash",
+]
 SYSTEM_PROMPT = (
     "You are a strict plant-image classifier. "
     "You must return ONLY valid JSON, no extra text."
@@ -35,6 +39,20 @@ def get_model_name() -> str:
                     return parsed
 
     return DEFAULT_MODEL_NAME
+
+
+def build_model_candidates(requested_model: str) -> list[str]:
+    """Build an ordered model fallback list, deduplicated while preserving order."""
+    ordered = [requested_model, *FALLBACK_MODELS]
+    seen: set[str] = set()
+    candidates: list[str] = []
+    for model in ordered:
+        normalized = (model or "").strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        candidates.append(normalized)
+    return candidates
 
 
 def get_gemini_api_key_with_source() -> Tuple[str, str]:
@@ -132,12 +150,15 @@ def analyze_crop_image(
             - overall_description (string or null)
             - plant_name (string or null)
     """
-    resolved_model = (model or get_model_name()).strip()
+    requested_model = (model or get_model_name()).strip()
+    model_candidates = build_model_candidates(requested_model)
 
     debug_info: Dict[str, Any] = {
         "image_path": image_path,
         "mime_type": mime_type,
-        "model": resolved_model,
+        "model": requested_model,
+        "model_candidates": model_candidates,
+        "attempted_models": [],
         "status": "started",
     }
 
@@ -147,7 +168,7 @@ def analyze_crop_image(
         print(f"[analyze_image] {debug_info['reason']}")
         return None, debug_info
 
-    print(f"[analyze_image] Analyzing image: {image_path} | mime={mime_type} | model={resolved_model}")
+    print(f"[analyze_image] Analyzing image: {image_path} | mime={mime_type} | model={requested_model}")
 
     try:
         key, key_source = get_gemini_api_key_with_source()
@@ -175,18 +196,43 @@ def analyze_crop_image(
             "Rules: Return ONLY JSON. No markdown. No extra keys."
         )
 
-        response = client.models.generate_content(
-            model=resolved_model,
-            contents=[
-                analysis_prompt,
-                genai.types.Part(
-                    inline_data=genai.types.Blob(
-                        mime_type=mime_type,
-                        data=image_data,
-                    )
-                ),
-            ],
-        )
+        response = None
+        last_model_error: Optional[Exception] = None
+        active_model: Optional[str] = None
+        for candidate_model in model_candidates:
+            active_model = candidate_model
+            debug_info["attempted_models"].append(candidate_model)
+            try:
+                response = client.models.generate_content(
+                    model=candidate_model,
+                    contents=[
+                        analysis_prompt,
+                        genai.types.Part(
+                            inline_data=genai.types.Blob(
+                                mime_type=mime_type,
+                                data=image_data,
+                            )
+                        ),
+                    ],
+                )
+                debug_info["model"] = candidate_model
+                if candidate_model != requested_model:
+                    debug_info["model_fallback_used"] = True
+                    debug_info["fallback_from"] = requested_model
+                    debug_info["fallback_to"] = candidate_model
+                break
+            except Exception as model_exc:
+                last_model_error = model_exc
+                exc_text = str(model_exc)
+                if "NOT_FOUND" in exc_text or "not supported for generateContent" in exc_text:
+                    print(f"[analyze_image] Model '{candidate_model}' unavailable, trying next candidate...")
+                    continue
+                raise
+
+        if response is None:
+            if last_model_error is not None:
+                raise last_model_error
+            raise RuntimeError("No model candidates available for Gemini request")
 
         response_text = response.text or ""
         debug_info["raw_response"] = _truncate_debug_text(response_text)
@@ -265,6 +311,8 @@ def analyze_crop_image(
     except Exception as e:
         debug_info["status"] = "exception"
         debug_info["reason"] = str(e)
+        if "NOT_FOUND" in str(e):
+            debug_info["model_not_found"] = True
         print(f"[analyze_image] Image analysis failed: {e}")
         return None, debug_info
 

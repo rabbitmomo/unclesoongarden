@@ -39,6 +39,12 @@ def _build_analysis_failure_message(debug_info: Optional[dict], fallback_message
             return f"Gemini quota exceeded. Please try again in about {retry_seconds} seconds."
         return "Gemini quota exceeded. Please try again later or upgrade your Gemini API plan."
 
+    if "NOT_FOUND" in reason or "not supported for generateContent" in reason:
+        fallback_to = debug_info.get("fallback_to") if isinstance(debug_info, dict) else None
+        if fallback_to:
+            return f"Configured Gemini model unavailable. Automatically switched to {fallback_to}. Please retry."
+        return "Configured Gemini model is not available for this API version. Set GEMINI_MODEL to gemini-2.5-flash."
+
     return fallback_message
 
 
