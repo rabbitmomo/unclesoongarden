@@ -9,10 +9,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from supabase import Client, create_client
 
-try:
-    from backend.analyze_image import analyze_crop_image
-except ModuleNotFoundError:
-    from analyze_image import analyze_crop_image
+from analyze_image import analyze_crop_image
 
 app = FastAPI(
     title="Uncle Soon Garden API",

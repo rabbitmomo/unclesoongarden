@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from google import genai
+import google.generativeai as genai
 
 
 MODEL_NAME = "gemini-3-flash-preview"
