@@ -4,10 +4,10 @@ import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-import google.generativeai as genai
+import google.genai as genai
 
 
-MODEL_NAME = "gemini-3-flash-preview"
+MODEL_NAME = "gemini-2.0-flash"
 SYSTEM_PROMPT = (
     "You are a strict plant-image classifier. "
     "You must return ONLY valid JSON, no extra text."

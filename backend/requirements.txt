@@ -6,8 +6,8 @@ python-multipart>=0.0.6
 # Database & API client
 supabase>=2.3.0
 
-# AI & LLM
-google-generativeai>=0.3.0
+# AI & LLM (new Google Gemini package)
+google-genai>=0.1.0
 
 # Data validation
 pydantic>=2.0.0
