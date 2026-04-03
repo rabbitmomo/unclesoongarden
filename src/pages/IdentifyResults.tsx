@@ -46,7 +46,7 @@ interface LatestReportResponse {
   }>;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8010";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 const toConfidencePercent = (value?: number | null): number | undefined => {
   if (value === undefined || value === null) return undefined;
