@@ -131,7 +131,7 @@ const IdentifyCameraPage = () => {
       setProgress(100);
 
       if (!payload.has_plant) {
-        toast.error("No plant detected in image.");
+        toast.error(payload.overall_description || "No plant detected in image.");
       } else {
         toast.success(
           `Detected ${payload.plant_name || "plant"} (${payload.overall_status || "warning"})`
