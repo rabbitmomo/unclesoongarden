@@ -8,11 +8,33 @@ from typing import Any, Dict, Optional, Tuple
 import google.genai as genai
 
 
-MODEL_NAME = "gemini-2.0-flash"
+DEFAULT_MODEL_NAME = "gemini-3-flash"
 SYSTEM_PROMPT = (
     "You are a strict plant-image classifier. "
     "You must return ONLY valid JSON, no extra text."
 )
+
+
+def get_model_name() -> str:
+    """Resolve Gemini model name from environment or local .env file."""
+    model = os.getenv("GEMINI_MODEL")
+    if model and model.strip():
+        return model.strip()
+
+    env_path = Path(__file__).resolve().parents[1] / ".env"
+    if env_path.exists():
+        for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+
+            name, value = line.split("=", 1)
+            if name.strip() == "GEMINI_MODEL":
+                parsed = value.strip().strip('"').strip("'")
+                if parsed:
+                    return parsed
+
+    return DEFAULT_MODEL_NAME
 
 
 def get_gemini_api_key_with_source() -> Tuple[str, str]:
@@ -89,7 +111,7 @@ def _truncate_debug_text(text: Optional[str], limit: int = 1500) -> str:
 def analyze_crop_image(
     image_path: str,
     custom_prompt: Optional[str] = None,
-    model: str = MODEL_NAME,
+    model: Optional[str] = None,
     mime_type: str = "image/jpeg",
     debug: bool = False,
 ) -> Tuple[Optional[Dict[str, Any]], Dict[str, Any]]:
@@ -110,10 +132,12 @@ def analyze_crop_image(
             - overall_description (string or null)
             - plant_name (string or null)
     """
+    resolved_model = (model or get_model_name()).strip()
+
     debug_info: Dict[str, Any] = {
         "image_path": image_path,
         "mime_type": mime_type,
-        "model": model,
+        "model": resolved_model,
         "status": "started",
     }
 
@@ -123,7 +147,7 @@ def analyze_crop_image(
         print(f"[analyze_image] {debug_info['reason']}")
         return None, debug_info
 
-    print(f"[analyze_image] Analyzing image: {image_path} | mime={mime_type} | model={model}")
+    print(f"[analyze_image] Analyzing image: {image_path} | mime={mime_type} | model={resolved_model}")
 
     try:
         key, key_source = get_gemini_api_key_with_source()
@@ -152,7 +176,7 @@ def analyze_crop_image(
         )
 
         response = client.models.generate_content(
-            model=model,
+            model=resolved_model,
             contents=[
                 analysis_prompt,
                 genai.types.Part(
@@ -255,7 +279,7 @@ def main():
     )
     parser.add_argument(
         "--model",
-        default=MODEL_NAME,
+        default=get_model_name(),
         help="Gemini model to use",
     )
     args = parser.parse_args()

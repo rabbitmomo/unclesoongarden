@@ -331,6 +331,11 @@ async def analyze_uploaded_image(file: UploadFile = File(...), debug: bool = Fal
                     if result:
                         print(f"[analyze_image] Analysis succeeded: {result}")
                         break
+
+                    reason_text = str((debug_info or {}).get("reason") or "")
+                    if "RESOURCE_EXHAUSTED" in reason_text or "quota" in reason_text.lower():
+                        print("[analyze_image] Quota exhaustion detected; skipping retry.")
+                        break
                 except Exception as exc:
                     last_error = exc
                     print(f"[analyze_image] Attempt {attempt + 1} failed: {exc}")
