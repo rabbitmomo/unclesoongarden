@@ -5,16 +5,6 @@ import { toast } from "sonner";
 
 const POSTS = [
   {
-    id: "1",
-    farmer: { id: "f1", name: "Ah Kow", avatar: "👨", location: "Johor Bahru" },
-    image: "/ciligrowing.jpg",
-    caption: "My cili padi finally turning red! 45 days from seed 🔥",
-    likes: 23,
-    comments: 5,
-    daysAgo: 1,
-    tags: ["chili", "harvest"],
-  },
-  {
     id: "2",
     farmer: { id: "f2", name: "Mak Limah", avatar: "👩‍🌾", location: "Ipoh" },
     image: "/tomatogrowing.jpg",
@@ -35,16 +25,6 @@ const POSTS = [
     tags: ["kangkung", "seeds"],
   },
   {
-    id: "4",
-    farmer: { id: "f1", name: "Ah Kow", avatar: "👨", location: "Johor Bahru" },
-    image: "/potatogrowing.jpg",
-    caption: "First potato harvest! Small but mighty. Next round I'll use bigger pots.",
-    likes: 18,
-    comments: 3,
-    daysAgo: 5,
-    tags: ["potato", "harvest"],
-  },
-  {
     id: "5",
     farmer: { id: "f2", name: "Mak Limah", avatar: "👩‍🌾", location: "Ipoh" },
     image: "/lettucegrowing.jpg",
@@ -63,6 +43,26 @@ const POSTS = [
     comments: 4,
     daysAgo: 6,
     tags: ["pepper", "experiment"],
+  },
+  {
+    id: "1",
+    farmer: { id: "f1", name: "Ah Kow", avatar: "👨", location: "Johor Bahru" },
+    image: "/ciligrowing.jpg",
+    caption: "My cili padi finally turning red! 45 days from seed 🔥",
+    likes: 23,
+    comments: 5,
+    daysAgo: 1,
+    tags: ["chili", "harvest"],
+  },
+  {
+    id: "4",
+    farmer: { id: "f1", name: "Ah Kow", avatar: "👨", location: "Johor Bahru" },
+    image: "/potatogrowing.jpg",
+    caption: "First potato harvest! Small but mighty. Next round I'll use bigger pots.",
+    likes: 18,
+    comments: 3,
+    daysAgo: 5,
+    tags: ["potato", "harvest"],
   },
 ];
 
@@ -86,7 +86,7 @@ const ExplorePage = () => {
 
   const handleMessages = (e: React.MouseEvent) => {
     e.stopPropagation();
-    toast.success("Open messages!");
+    navigate("/chat");
   };
 
   const handleNewPost = () => {

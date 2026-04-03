@@ -10,6 +10,15 @@ interface CapturedImage {
   file?: File;
 }
 
+interface AnalyzeImageApiResponse {
+  has_plant: boolean;
+  overall_status: "good" | "warning" | "danger" | null;
+  overall_description: string | null;
+  plant_name: string | null;
+}
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8010";
+
 const IdentifyCameraPage = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -52,26 +61,73 @@ const IdentifyCameraPage = () => {
   };
 
   // Start analysis
-  const handleStartAnalysis = () => {
+  const handleStartAnalysis = async () => {
+    if (!capturedImage?.file) {
+      toast.error("Please upload or capture an image first.");
+      return;
+    }
+
     setMode("analyzing");
     setAnalyzing(true);
     setProgress(0);
 
-    // Simulate analysis progress
+    const formData = new FormData();
+    formData.append("file", capturedImage.file);
+
+    const analyzeRequest = fetch(`${API_BASE_URL}/api/analyze-image`, {
+      method: "POST",
+      body: formData,
+    }).then(async (response) => {
+      const responseText = await response.text();
+
+      if (!response.ok) {
+        console.error("Analyze image API error:", response.status, responseText);
+        throw new Error(`Analysis failed: ${response.status}`);
+      }
+
+      return JSON.parse(responseText) as AnalyzeImageApiResponse;
+    });
+
+    // Animation-only progress while the request is running.
     const interval = setInterval(() => {
       setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setAnalyzing(false);
-          // Navigate to results after analysis completes
-          setTimeout(() => {
-            navigate("/identify-results", { state: { image: capturedImage?.url } });
-          }, 500);
-          return 100;
-        }
-        return prev + Math.random() * 25;
+        if (prev >= 90) return 90;
+        return Math.min(prev + Math.random() * 12, 90);
       });
-    }, 400);
+    }, 300);
+
+    try {
+      const payload = await analyzeRequest;
+      console.log("Gemini analyze result:", payload);
+
+      clearInterval(interval);
+      setProgress(100);
+
+      if (!payload.has_plant) {
+        toast.error("No plant detected in image.");
+      } else {
+        toast.success(
+          `Detected ${payload.plant_name || "plant"} (${payload.overall_status || "warning"})`
+        );
+      }
+
+      setTimeout(() => {
+        setAnalyzing(false);
+        navigate("/identify-results", {
+          state: {
+            image: capturedImage.url,
+            overallStatus: payload.overall_status,
+          },
+        });
+      }, 500);
+    } catch (error) {
+      console.error("Analyze image request failed:", error);
+      clearInterval(interval);
+      setAnalyzing(false);
+      setMode("preview");
+      setProgress(0);
+      toast.error("Failed to analyze image. Check console for details.");
+    }
   };
 
   // Retake photo

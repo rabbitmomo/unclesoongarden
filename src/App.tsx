@@ -14,6 +14,8 @@ import FarmerProfile from "./pages/FarmerProfile";
 import CreatePost from "./pages/CreatePost";
 import IdentifyCamera from "./pages/IdentifyCamera";
 import IdentifyResults from "./pages/IdentifyResults";
+import Chat from "./pages/Chat";
+import ChatDetail from "./pages/ChatDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +31,8 @@ const App = () => (
           <Route path="/explore/post/:id" element={<PostDetail />} />
           <Route path="/explore/farmer/:id" element={<FarmerProfile />} />
           <Route path="/create-post" element={<CreatePost />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/chat/:id" element={<ChatDetail />} />
           <Route path="/identify" element={<IdentifyCamera />} />
           <Route path="/identify-results" element={<IdentifyResults />} />
           <Route path="/check" element={<DailyCheck />} />

@@ -117,7 +117,7 @@ const UncleSoonGuide = () => {
 
       {/* Action Button */}
       <button
-        onClick={() => navigate("/check")}
+        onClick={() => navigate("/identify")}
         className="w-full mt-4 bg-primary text-primary-foreground rounded-2xl py-4 flex items-center justify-center gap-2.5 text-label active:scale-[0.97] transition-transform relative overflow-hidden group"
       >
         <span className="absolute inset-0 bg-primary/80 rounded-2xl animate-pulse-ring opacity-30" />

@@ -11,7 +11,11 @@ const tabs = [
 
 const BottomNav = () => {
   const location = useLocation();
-  const isDetailPage = location.pathname.startsWith("/plants/") || location.pathname.startsWith("/explore/") || location.pathname === "/identify" || location.pathname === "/identify-results";
+  const isDetailPage =
+    location.pathname.startsWith("/plants/") ||
+    location.pathname.startsWith("/explore/") ||
+    location.pathname === "/identify" ||
+    location.pathname === "/identify-results";
 
   if (isDetailPage) return null;
 
