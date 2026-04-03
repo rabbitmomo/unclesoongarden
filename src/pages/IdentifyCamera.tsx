@@ -16,6 +16,20 @@ interface AnalyzeImageApiResponse {
   overall_status: "good" | "warning" | "danger" | null;
   overall_description: string | null;
   plant_name: string | null;
+  debug?: {
+    status: string;
+    reason?: string | null;
+    model?: string | null;
+    mime_type?: string | null;
+    image_bytes?: number | null;
+    raw_response?: string | null;
+    parsed_json?: Record<string, unknown> | null;
+    parsed_has_plant?: boolean | null;
+    parsed_overall_status?: string | null;
+    parsed_plant_name?: string | null;
+    parsed_overall_description?: string | null;
+    result?: Record<string, unknown> | null;
+  } | null;
 }
 
 const API_BASE_URL = getApiBaseUrl();
@@ -93,7 +107,7 @@ const IdentifyCameraPage = () => {
     const formData = new FormData();
     formData.append("file", capturedImage.file);
 
-    const analyzeRequest = fetch(`${API_BASE_URL}/api/analyze-image`, {
+    const analyzeRequest = fetch(`${API_BASE_URL}/api/analyze-image?debug=true`, {
       method: "POST",
       body: formData,
     }).then((response) => readJsonResponse<AnalyzeImageApiResponse>(response));
@@ -109,6 +123,9 @@ const IdentifyCameraPage = () => {
     try {
       const payload = await analyzeRequest;
       console.log("Gemini analyze result:", payload);
+      if (payload.debug) {
+        console.log("Gemini analyze debug:", payload.debug);
+      }
 
       clearInterval(interval);
       setProgress(100);
