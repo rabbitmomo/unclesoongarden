@@ -97,9 +97,6 @@ const HomePage = () => {
         <UncleSoonGuide />
       </div>
 
-      {/* Learn & Grow Tutorials */}
-      <TutorialSection />
-
       {/* Seed-to-Harvest Timeline */}
       <h2 className="text-title text-foreground mb-3">Growth Progress</h2>
       <div className="bg-card rounded-2xl p-5 card-shadow mb-8">
@@ -172,6 +169,9 @@ const HomePage = () => {
           <p className="text-body text-muted-foreground">All tasks completed today! 🌟</p>
         </div>
       )}
+
+      {/* Learn & Grow Tutorials */}
+      <TutorialSection />
 
       {/* Plant Health Overview */}
       <div className="flex items-center justify-between mb-3">
