@@ -4,11 +4,11 @@ Uncle Soon Garden is a smart gardening companion for home growers and small farm
 
 ## What it does
 
-- Tracks plant care tasks and daily check-ins
-- Shows garden progress, plant status, and grower advice from Uncle Soon
-- Lets users upload plant photos for AI analysis
-- Surfaces analysis reports, recommendations, and follow-up actions
-- Supports chat, exploration, profiles, and plant detail views
+- Tracks plant care tasks and daily check-ins.
+- Shows garden progress, plant status, and grower advice from Uncle Soon.
+- Lets users upload plant photos for AI analysis.
+- Surfaces analysis reports, recommendations, and follow-up actions.
+- Supports chat, exploration, profiles, and plant detail views.
 
 ## Tech Stack
 
