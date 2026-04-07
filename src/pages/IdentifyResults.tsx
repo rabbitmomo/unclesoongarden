@@ -97,13 +97,17 @@ const parseSignedPercentFromText = (text?: string | null): number | undefined =>
 const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const routeState = location.state as {
+    overallStatus?: "good" | "warning" | "danger" | null;
+    overallDescription?: string | null;
+  } | null;
   const requestedOverallStatus = (
-    (location.state as { overallStatus?: "good" | "warning" | "danger" | null } | null)
-      ?.overallStatus ||
+    routeState?.overallStatus ||
     ""
   )
     .toString()
     .toLowerCase();
+  const requestedOverallDescription = (routeState?.overallDescription || "").toString();
   const [loading, setLoading] = useState(true);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
@@ -173,7 +177,7 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
         );
 
         setRecommendations(payload.recommendations || []);
-        setUncleSoonMessage(payload.report.uncle_soon_message || "");
+        setUncleSoonMessage(requestedOverallDescription || payload.report.uncle_soon_message || "");
         setOverallStatus(payload.report.overall_status || "good");
       } catch (error) {
         console.error(error);
@@ -184,7 +188,7 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
     };
 
     fetchLatestReport();
-  }, [requestedOverallStatus]);
+  }, [requestedOverallDescription, requestedOverallStatus]);
 
   const renderedResults = analysisResults;
   const renderedRecommendations = recommendations;

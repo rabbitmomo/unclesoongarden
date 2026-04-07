@@ -144,6 +144,7 @@ const IdentifyCameraPage = () => {
           state: {
             image: capturedImage.url,
             overallStatus: payload.overall_status,
+            overallDescription: payload.overall_description,
           },
         });
       }, 500);

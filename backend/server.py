@@ -77,6 +77,58 @@ def get_supabase_client() -> Client:
     return create_client(DB_SUPABASE_SECRET_URL, DB_SUPABASE_SECRET_KEY)
 
 
+def _empty_report_bundle() -> dict:
+    return {
+        "ok": True,
+        "report": None,
+        "analysis_results": [],
+        "recommendations": [],
+    }
+
+
+def _select_report_data(supabase: Client, normalized_status: str):
+    if normalized_status:
+        candidate_reports = (
+            supabase
+            .table("ai_reports")
+            .select("id")
+            .eq("overall_status", normalized_status)
+            .execute()
+            .data
+        ) or []
+
+        total_candidates = len(candidate_reports)
+        if total_candidates == 0:
+            return []
+
+        # Use OS entropy to pick one candidate index.
+        index = int.from_bytes(os.urandom(8), "big") % total_candidates
+        selected_report = candidate_reports[index]
+        selected_report_id = selected_report.get("id") if isinstance(selected_report, dict) else None
+        if not selected_report_id:
+            raise HTTPException(status_code=500, detail="Invalid report id payload from database")
+
+        return (
+            supabase
+            .table("ai_reports")
+            .select("*")
+            .eq("id", selected_report_id)
+            .limit(1)
+            .execute()
+            .data
+        )
+
+    return (
+        supabase
+        .table("ai_reports")
+        .select("*")
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+        .data
+    )
+
+
 class TestDataIn(BaseModel):
     name: str
     note: str
@@ -167,34 +219,19 @@ def list_test_data():
 
 @app.get("/api/ai-report/latest")
 def get_latest_ai_report(overall_status: Optional[str] = None):
-    """Read latest AI report bundle, optionally filtered by overall_status."""
+    """Read AI report bundle.
+
+    - If overall_status is provided, return one status-matching report.
+    - If overall_status is not provided, return the latest report.
+    """
     try:
         supabase = get_supabase_client()
 
         normalized_status = (overall_status or "").strip().lower()
-        query = (
-            supabase
-            .table("ai_reports")
-            .select("*")
-        )
-        if normalized_status:
-            query = query.eq("overall_status", normalized_status)
-
-        report_data = (
-            query
-            .order("created_at", desc=True)
-            .limit(1)
-            .execute()
-            .data
-        )
+        report_data = _select_report_data(supabase, normalized_status)
 
         if not report_data:
-            return {
-                "ok": True,
-                "report": None,
-                "analysis_results": [],
-                "recommendations": [],
-            }
+            return _empty_report_bundle()
 
         report = report_data[0]
         if not isinstance(report, dict):
