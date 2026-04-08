@@ -88,7 +88,7 @@ const HomePage = () => {
         </div>
         <div className="flex items-center gap-1.5 bg-secondary px-3 py-1.5 rounded-full">
           <Leaf size={16} className="text-primary" />
-          <span className="text-label text-foreground">3 plants</span>
+          <span className="text-label text-foreground">3 crops</span>
         </div>
       </div>
 

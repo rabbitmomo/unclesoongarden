@@ -106,12 +106,12 @@ const PlantsPage = () => {
     }
 
     setMyGardenPlants(getMyGardenPlants());
-    toast.success("Plant removed from My Garden");
+    toast.success("Plant removed from My Crops");
   };
 
   return (
     <div className="min-h-screen pb-24 px-4 pt-6 max-w-md mx-auto">
-      <h1 className="text-display text-foreground mb-1">My Garden</h1>
+      <h1 className="text-display text-foreground mb-1">My Crops</h1>
       <p className="text-body text-muted-foreground mb-6">
         {allPlants.length} plants being cared for
       </p>
@@ -154,7 +154,7 @@ const PlantsPage = () => {
       </div>
 
       <button 
-        onClick={() => navigate("/check")}
+        onClick={() => navigate("/identify")}
         className="w-full bg-card card-shadow text-foreground rounded-2xl py-4 flex items-center justify-center gap-2.5 text-title border-2 border-dashed border-border active:scale-[0.97] transition-transform hover:border-primary/40"
       >
         <Plus size={24} className="text-primary" /> Add New Plant
