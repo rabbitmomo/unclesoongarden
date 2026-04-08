@@ -1,13 +1,15 @@
-import { forwardRef, useEffect, useMemo, useState } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle, AlertCircle, Zap, Download, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import uncleSoon from "@/assets/uncle-soon.png";
 import { getApiBaseUrl } from "@/lib/api-base-url";
+import { saveMyGardenPlant } from "@/lib/mygarden-storage";
 
 interface AnalysisResult {
   icon: string;
   toolName: string;
+  description: string;
   result: string;
   confidence?: number;
   metricPercent?: number;
@@ -94,12 +96,37 @@ const parseSignedPercentFromText = (text?: string | null): number | undefined =>
   return numeric;
 };
 
+const getToolDescription = (toolName: string): string => {
+  const lower = toolName.toLowerCase();
+  if (lower.includes("ripeness")) return "Fruit maturity analysis from identify result";
+  if (lower.includes("disease")) return "Disease signal analysis from identify result";
+  if (lower.includes("pest")) return "Pest signal analysis from identify result";
+  if (lower.includes("water stress")) return "Hydration stress analysis from identify result";
+  if (lower.includes("weather")) return "Weather-aware guidance from identify result";
+  if (lower.includes("growth")) return "Growth trend tracking from identify result";
+  return "AI analysis from identify result";
+};
+
+const toDisplayPlantName = (name: string): string => {
+  const trimmed = name.trim();
+  if (!trimmed) return "Identified Plant";
+
+  return trimmed
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
 const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
   const navigate = useNavigate();
   const location = useLocation();
   const routeState = location.state as {
+    image?: string | null;
+    plantName?: string | null;
     overallStatus?: "good" | "warning" | "danger" | null;
     overallDescription?: string | null;
+    analyzedAt?: string | null;
   } | null;
   const requestedOverallStatus = (
     routeState?.overallStatus ||
@@ -113,6 +140,10 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [uncleSoonMessage, setUncleSoonMessage] = useState("");
   const [overallStatus, setOverallStatus] = useState("good");
+  const [reportImage, setReportImage] = useState((routeState?.image || "").toString());
+  const detectedPlantName = (routeState?.plantName || "").toString();
+  const analysisTimestamp = (routeState?.analyzedAt || new Date().toISOString()).toString();
+  const hasSavedToGardenRef = useRef(false);
 
   useEffect(() => {
     const fetchLatestReport = async () => {
@@ -164,6 +195,7 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
             return {
               icon: item.icon || "🌱",
               toolName: item.tool_name,
+              description: getToolDescription(item.tool_name),
               result: item.result_text,
               confidence,
               metricPercent,
@@ -177,8 +209,17 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
         );
 
         setRecommendations(payload.recommendations || []);
-        setUncleSoonMessage(requestedOverallDescription || payload.report.uncle_soon_message || "");
+        const normalizedRequestedMessage = requestedOverallDescription.trim();
+        const shouldUseRequestedMessage =
+          normalizedRequestedMessage.length > 0 &&
+          !/analysis unavailable/i.test(normalizedRequestedMessage);
+        setUncleSoonMessage(
+          shouldUseRequestedMessage
+            ? normalizedRequestedMessage
+            : payload.report.uncle_soon_message || normalizedRequestedMessage || ""
+        );
         setOverallStatus(payload.report.overall_status || "good");
+        setReportImage((previous) => previous || (payload.report.image_url || "").toString());
       } catch (error) {
         console.error(error);
         toast.error("Failed to fetch latest report.");
@@ -189,6 +230,60 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
 
     fetchLatestReport();
   }, [requestedOverallDescription, requestedOverallStatus]);
+
+  useEffect(() => {
+    if (loading || hasSavedToGardenRef.current) return;
+    if (!reportImage) return;
+    if (analysisResults.length === 0) return;
+    if (overallStatus !== "good" && overallStatus !== "warning" && overallStatus !== "danger") return;
+
+    const growthTrackingResult = analysisResults.find((item) =>
+      item.toolName.toLowerCase().includes("growth")
+    );
+
+    const tempPlantId = `temp-${analysisTimestamp}`;
+    const result = saveMyGardenPlant({
+      id: tempPlantId,
+      name: toDisplayPlantName(detectedPlantName),
+      image: reportImage,
+      overallStatus,
+      overallDescription: uncleSoonMessage || undefined,
+      analyzedAt: analysisTimestamp,
+      tracking: {
+        analysisCount: analysisResults.length,
+        recommendationCount: recommendations.length,
+        lastCheckedAt: analysisTimestamp,
+        growthSummary: growthTrackingResult?.result,
+      },
+      analysisSnapshot: {
+        results: analysisResults.map((item) => ({
+          icon: item.icon,
+          toolName: item.toolName,
+          description: item.description,
+          result: item.result,
+          confidence: item.confidence,
+          severity: item.severity,
+          details: item.details,
+        })),
+        recommendations,
+        uncleSoonMessage: uncleSoonMessage || undefined,
+      },
+    });
+
+    hasSavedToGardenRef.current = true;
+    if (result.saved) {
+      toast.success("Saved to My Garden");
+    }
+  }, [
+    analysisResults,
+    analysisTimestamp,
+    detectedPlantName,
+    loading,
+    overallStatus,
+    recommendations,
+    reportImage,
+    uncleSoonMessage,
+  ]);
 
   const renderedResults = analysisResults;
   const renderedRecommendations = recommendations;

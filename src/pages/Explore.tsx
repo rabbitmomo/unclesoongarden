@@ -124,14 +124,14 @@ const ExplorePage = () => {
 
       {/* 2-Column Grid Feed (小红书 style) */}
       <div className="px-3 mt-2 grid grid-cols-2 gap-2.5">
-        {POSTS.map((post, idx) => (
+        {POSTS.map((post) => (
           <article
             key={post.id}
             className="bg-card rounded-2xl card-shadow overflow-hidden active:scale-[0.98] transition-transform cursor-pointer flex flex-col"
             onClick={() => navigate(`/explore/post/${post.id}`)}
           >
             {/* Image area */}
-            <div className={`relative bg-secondary/50 flex items-center justify-center overflow-hidden ${idx % 3 === 0 ? "h-48" : "h-40"}`}>
+            <div className="relative bg-secondary/50 flex items-center justify-center overflow-hidden h-44">
               <img src={post.image} alt={post.caption} className="w-full h-full object-cover" />
             </div>
 

@@ -107,15 +107,15 @@ const HomePage = () => {
         <div className="relative h-3 w-full rounded-full bg-secondary overflow-hidden mb-3">
           <div className="h-full rounded-full bg-primary transition-all" style={{ width: "75%" }} />
         </div>
-        <div className="flex justify-between text-caption text-muted-foreground">
+        <div className="flex justify-between text-sm text-muted-foreground/90">
           <span>🌱 Sowed</span>
           <span>🌿 Transplant</span>
           <span>🌶️ Harvest</span>
         </div>
         <div className="flex justify-between mt-0.5">
-          <span className="text-caption text-primary font-semibold">Day 1</span>
-          <span className="text-caption text-muted-foreground">Day 30</span>
-          <span className="text-caption text-muted-foreground">Day 60</span>
+          <span className="text-sm text-muted-foreground/90">Day 1</span>
+          <span className="text-sm text-muted-foreground/90">Day 30</span>
+          <span className="text-sm text-muted-foreground/90">Day 60</span>
         </div>
       </div>
 

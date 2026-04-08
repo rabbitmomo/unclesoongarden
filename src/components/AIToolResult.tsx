@@ -10,6 +10,8 @@ interface AIToolResultProps {
     confidence?: number;
     severity?: "good" | "warning" | "critical";
     details?: string;
+    showProgressBar?: boolean;
+    modelConfidenceText?: string;
   };
   delay?: number;
 }
@@ -60,7 +62,7 @@ const AIToolResult = ({ icon, toolName, description, status, result, delay = 0 }
               <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-label ${severityColors[result.severity || "good"]}`}>
                 {result.label}
               </div>
-              {result.confidence !== undefined && (
+              {result.confidence !== undefined && (result.showProgressBar ?? true) && (
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
                     <div
@@ -72,6 +74,9 @@ const AIToolResult = ({ icon, toolName, description, status, result, delay = 0 }
                     {result.confidence}%
                   </span>
                 </div>
+              )}
+              {result.modelConfidenceText && (
+                <p className="text-caption text-muted-foreground">{result.modelConfidenceText}</p>
               )}
               {result.details && (
                 <p className="text-caption text-muted-foreground">{result.details}</p>

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import StatusBadge from "./StatusBadge";
 import { ChevronRight } from "lucide-react";
 
@@ -8,9 +9,10 @@ interface PlantCardProps {
   stage: string;
   lastChecked?: string;
   onClick?: () => void;
+  statusAction?: ReactNode;
 }
 
-const PlantCard = ({ name, image, status, stage, lastChecked, onClick }: PlantCardProps) => {
+const PlantCard = ({ name, image, status, stage, lastChecked, onClick, statusAction }: PlantCardProps) => {
   return (
     <button
       onClick={onClick}
@@ -30,8 +32,9 @@ const PlantCard = ({ name, image, status, stage, lastChecked, onClick }: PlantCa
         {lastChecked && (
           <p className="text-caption text-muted-foreground">Checked {lastChecked}</p>
         )}
-        <div className="mt-1.5">
+        <div className="mt-1.5 flex items-center gap-1.5">
           <StatusBadge status={status} size="sm" />
+          {statusAction}
         </div>
       </div>
       <ChevronRight size={20} className="text-muted-foreground flex-shrink-0" />

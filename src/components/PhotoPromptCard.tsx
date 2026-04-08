@@ -31,7 +31,13 @@ const PhotoPromptCard = ({ message, plantName }: PhotoPromptProps) => {
         </div>
       </div>
       <button
-        onClick={() => navigate("/check")}
+        onClick={() =>
+          navigate("/identify", {
+            state: {
+              sourcePlantName: plantName,
+            },
+          })
+        }
         className="w-full mt-4 bg-primary text-primary-foreground rounded-xl py-3.5 flex items-center justify-center gap-2 text-label active:scale-[0.97] transition-transform relative overflow-hidden"
       >
         <span className="absolute inset-0 rounded-xl border-2 border-primary animate-pulse-ring" />

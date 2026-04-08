@@ -9,6 +9,7 @@ interface Decision {
 interface DecisionEngineProps {
   decisions: Decision[];
   overallVerdict: string;
+  variant?: "default" | "identify";
 }
 
 const priorityStyles = {
@@ -17,7 +18,7 @@ const priorityStyles = {
   low: "border-l-healthy",
 };
 
-const DecisionEngine = ({ decisions, overallVerdict }: DecisionEngineProps) => {
+const DecisionEngine = ({ decisions, overallVerdict, variant = "default" }: DecisionEngineProps) => {
   return (
     <div className="bg-card rounded-2xl p-5 card-shadow animate-fade-up">
       <div className="flex items-center gap-2.5 mb-4">
@@ -38,10 +39,26 @@ const DecisionEngine = ({ decisions, overallVerdict }: DecisionEngineProps) => {
         {decisions.map((d, i) => (
           <div
             key={i}
-            className={`bg-background rounded-xl p-3.5 border-l-4 ${priorityStyles[d.priority]}`}
+            className={
+              variant === "identify"
+                ? `rounded-xl p-3 border-l-4 ${
+                    d.priority === "high"
+                      ? "bg-red-500/5 border-red-500"
+                      : d.priority === "medium"
+                        ? "bg-amber-500/5 border-amber-500"
+                        : "bg-blue-500/5 border-blue-500"
+                  }`
+                : `bg-background rounded-xl p-3.5 border-l-4 ${priorityStyles[d.priority]}`
+            }
           >
             <div className="flex items-start gap-2.5">
-              <ArrowRight size={16} className="text-primary mt-0.5 flex-shrink-0" />
+              {variant === "identify" ? (
+                <span className="text-lg mt-0.5">
+                  {d.priority === "high" ? "🔴" : d.priority === "medium" ? "🟡" : "🔵"}
+                </span>
+              ) : (
+                <ArrowRight size={16} className="text-primary mt-0.5 flex-shrink-0" />
+              )}
               <div>
                 <p className="text-body font-semibold">{d.action}</p>
                 <p className="text-caption text-muted-foreground">{d.reason}</p>

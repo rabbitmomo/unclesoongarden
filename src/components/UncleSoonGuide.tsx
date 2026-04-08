@@ -122,7 +122,7 @@ const UncleSoonGuide = () => {
       >
         <span className="absolute inset-0 bg-primary/80 rounded-2xl animate-pulse-ring opacity-30" />
         <Camera size={22} />
-        <span className="text-body-lg font-bold">Let Uncle Soon Check Your Plant</span>
+        <span className="text-label font-semibold">Let Uncle Soon Check Your Plant</span>
         <ChevronRight size={18} className="group-active:translate-x-1 transition-transform" />
       </button>
     </div>

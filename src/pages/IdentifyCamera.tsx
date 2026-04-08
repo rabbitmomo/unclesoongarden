@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Image, Camera, X, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { getApiBaseUrl } from "@/lib/api-base-url";
@@ -54,6 +54,9 @@ const readJsonResponse = async <T,>(response: Response): Promise<T> => {
 
 const IdentifyCameraPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const routeState = location.state as { sourcePlantName?: string | null } | null;
+  const sourcePlantName = (routeState?.sourcePlantName || "").toString().trim();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -140,11 +143,14 @@ const IdentifyCameraPage = () => {
 
       setTimeout(() => {
         setAnalyzing(false);
+        const resolvedPlantName = (payload.plant_name || sourcePlantName || "").toString().trim();
         navigate("/identify-results", {
           state: {
             image: capturedImage.url,
+            plantName: resolvedPlantName || null,
             overallStatus: payload.overall_status,
             overallDescription: payload.overall_description,
+            analyzedAt: new Date().toISOString(),
           },
         });
       }, 500);

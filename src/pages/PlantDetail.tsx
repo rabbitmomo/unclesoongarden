@@ -1,9 +1,36 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import StatusBadge from "@/components/StatusBadge";
 import PhotoPromptCard from "@/components/PhotoPromptCard";
 import AIToolResult from "@/components/AIToolResult";
 import DecisionEngine from "@/components/DecisionEngine";
 import { ArrowLeft, Droplets, Sun, Sprout, Calendar, Camera } from "lucide-react";
+import { getMyGardenPlants } from "@/lib/mygarden-storage";
+
+const toDisplayPlantName = (name: string): string =>
+  name
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+
+const parsePercentFromText = (text?: string): number | undefined => {
+  if (!text) return undefined;
+  const match = text.match(/(\d+(?:\.\d+)?)\s*%/);
+  if (!match) return undefined;
+  const numeric = Number(match[1]);
+  if (!Number.isFinite(numeric)) return undefined;
+  return Math.max(0, Math.min(100, numeric));
+};
+
+const parseSignedPercentFromText = (text?: string): number | undefined => {
+  if (!text) return undefined;
+  const match = text.match(/([+-]?\d+(?:\.\d+)?)\s*%/);
+  if (!match) return undefined;
+  const numeric = Number(match[1]);
+  if (!Number.isFinite(numeric)) return undefined;
+  return numeric;
+};
 
 const plantData: Record<string, any> = {
   "1": {
@@ -199,7 +226,121 @@ const plantData: Record<string, any> = {
 const PlantDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const plant = plantData[id || "1"];
+  const location = useLocation();
+  const routeState = location.state as { tempPlantId?: string } | null;
+  const tempGardenPlants = getMyGardenPlants();
+  const tempPlantLookupId = routeState?.tempPlantId || (id === "view" ? tempGardenPlants[0]?.id : id);
+  const staticPlant = plantData[id || "1"];
+  const tempPlant = tempGardenPlants.find((item) => item.id === tempPlantLookupId);
+
+  const plant =
+    staticPlant ||
+    (tempPlant
+      ? {
+          name: toDisplayPlantName(tempPlant.name),
+          image: tempPlant.image,
+          status:
+            tempPlant.overallStatus === "good"
+              ? ("healthy" as const)
+              : tempPlant.overallStatus === "warning"
+                ? ("attention" as const)
+                : ("problem" as const),
+          stage: "Under AI Tracking",
+          daysSincePlanted: 1,
+          lastPhoto: "just now",
+          timeline: [
+            {
+              date: "Today",
+              event: "📸 Identify result saved",
+              detail: "This plant was added temporarily from Identify Results.",
+            },
+          ],
+          tips: [
+            { icon: Droplets, text: "Follow watering reminder", detail: "Check moisture before watering" },
+            { icon: Sun, text: "Ensure enough light", detail: "Keep in bright area with airflow" },
+            { icon: Sprout, text: "Track with new photos", detail: "Run Identify again to update progress" },
+          ],
+          aiTools:
+            tempPlant.analysisSnapshot?.results?.length
+              ? tempPlant.analysisSnapshot.results.map((item) => ({
+                  icon: item.icon || "🌱",
+                  toolName: item.toolName,
+                  description: item.description || "From identify result",
+                  ...(function () {
+                    const toolNameLower = item.toolName.toLowerCase();
+                    const isRipenessTool = toolNameLower.includes("ripeness");
+                    const isGrowthTool = toolNameLower.includes("growth");
+                    const ripenessPercent = parsePercentFromText(item.result);
+                    const growthSignedPercent = parseSignedPercentFromText(item.result);
+
+                    let metricPercent: number | undefined;
+                    let showProgressBar = false;
+
+                    if (isRipenessTool && ripenessPercent !== undefined) {
+                      metricPercent = ripenessPercent;
+                      showProgressBar = true;
+                    } else if (isGrowthTool && growthSignedPercent !== undefined) {
+                      metricPercent = Math.min(100, Math.max(0, Math.abs(growthSignedPercent)));
+                      showProgressBar = true;
+                    }
+
+                    return {
+                      result: {
+                        label: item.result,
+                        confidence: metricPercent,
+                        showProgressBar,
+                        modelConfidenceText:
+                          item.confidence !== undefined
+                            ? `Model confidence: ${Math.round(item.confidence)}%`
+                            : undefined,
+                        severity:
+                          item.severity === "danger"
+                            ? ("critical" as const)
+                            : (item.severity as "good" | "warning"),
+                        details: item.details,
+                      },
+                    };
+                  })(),
+                }))
+              : [
+                  {
+                    icon: "📊",
+                    toolName: "Saved Analysis Snapshot",
+                    description: "Temporary My Garden tracking metadata",
+                    result: {
+                      label: tempPlant.overallDescription || "Analysis captured",
+                      confidence: 100,
+                      severity:
+                        tempPlant.overallStatus === "good"
+                          ? ("good" as const)
+                          : tempPlant.overallStatus === "warning"
+                            ? ("warning" as const)
+                            : ("critical" as const),
+                      details: `Tracked ${tempPlant.tracking.analysisCount} tools and ${tempPlant.tracking.recommendationCount} recommendations.`,
+                    },
+                  },
+                ],
+          decisions:
+            tempPlant.analysisSnapshot?.recommendations?.length
+              ? tempPlant.analysisSnapshot.recommendations
+              : [
+                  {
+                    action: "Take next tracking photo in 1-2 days",
+                    reason: "Helps Uncle Soon compare growth and health over time",
+                    priority: "high" as const,
+                  },
+                  {
+                    action: "Keep this entry temporary",
+                    reason: "Temporary entries may be cleared when browser storage is cleared",
+                    priority: "low" as const,
+                  },
+                ],
+          verdict:
+            tempPlant.analysisSnapshot?.uncleSoonMessage ||
+            tempPlant.overallDescription ||
+            "This temporary plant entry is saved from your latest identify result.",
+        }
+      : undefined);
 
   if (!plant) {
     return (
@@ -276,9 +417,37 @@ const PlantDetailPage = () => {
           ))}
         </div>
 
-        {/* Care Tips */}
-        <h2 className="text-title mb-3">Care Guide</h2>
-        <div className="space-y-2.5 mb-6">
+        {/* AI Analysis Results */}
+        <h2 className="text-title mb-3">Uncle Soon's Analysis Report</h2>
+        <div className="space-y-4">
+          {/* All tool results - horizontal scroll like Identify Results */}
+          <div className="overflow-x-auto scrollbar-visible pb-2">
+            <div className="flex gap-4 min-w-min">
+              {plant.aiTools.map((tool: any, i: number) => (
+                <div key={i} className="flex-shrink-0 w-80">
+                  <AIToolResult
+                    icon={tool.icon}
+                    toolName={tool.toolName}
+                    description={tool.description}
+                    status="done"
+                    result={tool.result}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Decision Engine */}
+          <DecisionEngine
+            decisions={plant.decisions}
+            overallVerdict={plant.verdict}
+            variant="identify"
+          />
+        </div>
+
+        {/* Care Tips - keep this as the bottom section */}
+        <h2 className="text-title mt-6 mb-3">Care Guide</h2>
+        <div className="space-y-2.5">
           {plant.tips.map((tip: any, i: number) => (
             <div key={i} className="bg-card rounded-xl p-4 card-shadow flex items-center gap-3.5">
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -290,29 +459,6 @@ const PlantDetailPage = () => {
               </div>
             </div>
           ))}
-        </div>
-
-        {/* AI Analysis Results */}
-        <h2 className="text-title mb-3">Uncle Soon's Analysis Report</h2>
-        <div className="space-y-4">
-
-          {/* All tool results */}
-          {plant.aiTools.map((tool: any, i: number) => (
-            <AIToolResult
-              key={i}
-              icon={tool.icon}
-              toolName={tool.toolName}
-              description={tool.description}
-              status="done"
-              result={tool.result}
-            />
-          ))}
-
-          {/* Decision Engine */}
-          <DecisionEngine
-            decisions={plant.decisions}
-            overallVerdict={plant.verdict}
-          />
         </div>
       </div>
     </div>
