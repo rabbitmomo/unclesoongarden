@@ -50,6 +50,9 @@ interface LatestReportResponse {
 }
 
 const API_BASE_URL = getApiBaseUrl();
+const STORAGE_IMAGE_MAX_DIMENSION = 640;
+const STORAGE_IMAGE_QUALITY = 0.72;
+const STORAGE_IMAGE_LENGTH_THRESHOLD = 160_000;
 
 const readJsonResponse = async <T,>(response: Response): Promise<T> => {
   const responseText = await response.text();
@@ -118,6 +121,48 @@ const toDisplayPlantName = (name: string): string => {
     .join(" ");
 };
 
+const isDataImage = (value: string): boolean => value.startsWith("data:image/");
+
+const shrinkImageForStorage = async (image: string): Promise<string> => {
+  if (!image || !isDataImage(image) || image.length < STORAGE_IMAGE_LENGTH_THRESHOLD) {
+    return image;
+  }
+
+  if (typeof document === "undefined") {
+    return image;
+  }
+
+  try {
+    const loadedImage = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = reject;
+      element.src = image;
+    });
+
+    const scale = Math.min(
+      1,
+      STORAGE_IMAGE_MAX_DIMENSION / Math.max(loadedImage.width, loadedImage.height)
+    );
+    const width = Math.max(1, Math.round(loadedImage.width * scale));
+    const height = Math.max(1, Math.round(loadedImage.height * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return image;
+    }
+
+    context.drawImage(loadedImage, 0, 0, width, height);
+    return canvas.toDataURL("image/jpeg", STORAGE_IMAGE_QUALITY);
+  } catch {
+    return image;
+  }
+};
+
 const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -148,6 +193,8 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
   const hasSavedToGardenRef = useRef(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (noPlantDetected) {
       setAnalysisResults([]);
       setRecommendations([]);
@@ -256,38 +303,51 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
     );
 
     const tempPlantId = `temp-${analysisTimestamp}`;
-    const result = saveMyGardenPlant({
-      id: tempPlantId,
-      name: toDisplayPlantName(detectedPlantName),
-      image: reportImage,
-      overallStatus,
-      overallDescription: uncleSoonMessage || undefined,
-      analyzedAt: analysisTimestamp,
-      tracking: {
-        analysisCount: analysisResults.length,
-        recommendationCount: recommendations.length,
-        lastCheckedAt: analysisTimestamp,
-        growthSummary: growthTrackingResult?.result,
-      },
-      analysisSnapshot: {
-        results: analysisResults.map((item) => ({
-          icon: item.icon,
-          toolName: item.toolName,
-          description: item.description,
-          result: item.result,
-          confidence: item.confidence,
-          severity: item.severity,
-          details: item.details,
-        })),
-        recommendations,
-        uncleSoonMessage: uncleSoonMessage || undefined,
-      },
-    });
+    const savePlant = async () => {
+      const optimizedImage = await shrinkImageForStorage(reportImage);
+      if (cancelled) return;
 
-    hasSavedToGardenRef.current = true;
-    if (result.saved) {
-      toast.success("Saved to My Garden");
-    }
+      const result = saveMyGardenPlant({
+        id: tempPlantId,
+        name: toDisplayPlantName(detectedPlantName),
+        image: optimizedImage,
+        overallStatus,
+        overallDescription: uncleSoonMessage || undefined,
+        analyzedAt: analysisTimestamp,
+        tracking: {
+          analysisCount: analysisResults.length,
+          recommendationCount: recommendations.length,
+          lastCheckedAt: analysisTimestamp,
+          growthSummary: growthTrackingResult?.result,
+        },
+        analysisSnapshot: {
+          results: analysisResults.map((item) => ({
+            icon: item.icon,
+            toolName: item.toolName,
+            description: item.description,
+            result: item.result,
+            confidence: item.confidence,
+            severity: item.severity,
+            details: item.details,
+          })),
+          recommendations,
+          uncleSoonMessage: uncleSoonMessage || undefined,
+        },
+      });
+
+      hasSavedToGardenRef.current = true;
+      if (result.saved) {
+        toast.success("Saved to My Garden");
+      } else {
+        toast.error("Unable to save this plant on your device.");
+      }
+    };
+
+    void savePlant();
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     analysisResults,
     analysisTimestamp,
