@@ -64,6 +64,56 @@ const POSTS = [
     daysAgo: 5,
     tags: ["potato", "harvest"],
   },
+  {
+    id: "7",
+    farmer: { id: "f4", name: "Encik Razak", avatar: "👨‍🌾", location: "Kuala Lumpur" },
+    image: "/duriangrowing.jpg",
+    caption: "Durian season approaching! These beauties are almost ready to harvest. The King of Fruits awaits 👑",
+    likes: 52,
+    comments: 18,
+    daysAgo: 3,
+    tags: ["durian", "tropical", "harvest"],
+  },
+  {
+    id: "8",
+    farmer: { id: "f5", name: "Aunty Ros", avatar: "👩‍🌾", location: "Melaka" },
+    image: "/rambutangrowing.jpg",
+    caption: "Rambutan clusters looking amazing this season! Perfect ripeness with that vibrant red color 🔴",
+    likes: 38,
+    comments: 14,
+    daysAgo: 2,
+    tags: ["rambutan", "tropical", "organic"],
+  },
+  {
+    id: "9",
+    farmer: { id: "f4", name: "Encik Razak", avatar: "👨‍🌾", location: "Kuala Lumpur" },
+    image: "/bananagrowing.jpg",
+    caption: "Banana bunches developing nicely! Using Uncle Soon's spacing tips made a huge difference 💪",
+    likes: 29,
+    comments: 11,
+    daysAgo: 4,
+    tags: ["banana", "fruit", "spacing"],
+  },
+  {
+    id: "10",
+    farmer: { id: "f6", name: "Pak Ismail", avatar: "👨", location: "Pahang" },
+    image: "/pineapplegrowing.jpg",
+    caption: "Pineapple on Day 45 of growth. This variety grows so fast! Looking forward to the sweet harvest 🍍",
+    likes: 24,
+    comments: 8,
+    daysAgo: 1,
+    tags: ["pineapple", "tropical", "growth"],
+  },
+  {
+    id: "11",
+    farmer: { id: "f5", name: "Aunty Ros", avatar: "👩‍🌾", location: "Melaka" },
+    image: "/watermelongrowing.jpg",
+    caption: "Watermelon vines spreading beautifully across the garden. Can't wait for the crispy sweetness! 🍈",
+    likes: 33,
+    comments: 9,
+    daysAgo: 3,
+    tags: ["watermelon", "summer", "organic"],
+  },
 ];
 
 const ExplorePage = () => {
@@ -74,7 +124,11 @@ const ExplorePage = () => {
     e.stopPropagation();
     setLikedPosts((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   };
