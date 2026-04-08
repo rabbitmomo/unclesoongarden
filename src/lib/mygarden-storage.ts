@@ -38,6 +38,25 @@ const MAX_ITEMS = 20;
 
 const isClient = () => typeof window !== "undefined";
 
+const safeGetItem = (key: string): string | null => {
+  if (!isClient()) return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const safeSetItem = (key: string, value: string): boolean => {
+  if (!isClient()) return false;
+  try {
+    window.localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const isValidStatus = (value: unknown): value is IdentifyOverallStatus =>
   value === "good" || value === "warning" || value === "danger";
 
@@ -74,18 +93,15 @@ const parsePlants = (raw: string | null): MyGardenPlant[] => {
 };
 
 export const getMyGardenPlants = (): MyGardenPlant[] => {
-  if (!isClient()) return [];
-
-  const current = parsePlants(window.localStorage.getItem(MY_GARDEN_KEY));
+  const current = parsePlants(safeGetItem(MY_GARDEN_KEY));
   if (current.length > 0) return current;
 
   // Backward compatibility: read legacy key if the new key is empty.
-  return parsePlants(window.localStorage.getItem(LEGACY_TEMP_GARDEN_KEY));
+  return parsePlants(safeGetItem(LEGACY_TEMP_GARDEN_KEY));
 };
 
 const setMyGardenPlants = (plants: MyGardenPlant[]) => {
-  if (!isClient()) return;
-  window.localStorage.setItem(MY_GARDEN_KEY, JSON.stringify(plants));
+  safeSetItem(MY_GARDEN_KEY, JSON.stringify(plants));
 };
 
 export const saveMyGardenPlant = (plant: MyGardenPlant): { saved: boolean } => {

@@ -147,6 +147,7 @@ const IdentifyCameraPage = () => {
         navigate("/identify-results", {
           state: {
             image: capturedImage.url,
+            hasPlant: payload.has_plant,
             plantName: resolvedPlantName || null,
             overallStatus: payload.overall_status,
             overallDescription: payload.overall_description,

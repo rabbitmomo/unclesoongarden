@@ -123,11 +123,13 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
   const location = useLocation();
   const routeState = location.state as {
     image?: string | null;
+    hasPlant?: boolean | null;
     plantName?: string | null;
     overallStatus?: "good" | "warning" | "danger" | null;
     overallDescription?: string | null;
     analyzedAt?: string | null;
   } | null;
+  const noPlantDetected = routeState?.hasPlant === false;
   const requestedOverallStatus = (
     routeState?.overallStatus ||
     ""
@@ -146,6 +148,14 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
   const hasSavedToGardenRef = useRef(false);
 
   useEffect(() => {
+    if (noPlantDetected) {
+      setAnalysisResults([]);
+      setRecommendations([]);
+      setUncleSoonMessage(requestedOverallDescription.trim() || "No plant detected in image.");
+      setLoading(false);
+      return;
+    }
+
     const fetchLatestReport = async () => {
       try {
         const reportUrl = requestedOverallStatus
@@ -229,7 +239,7 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
     };
 
     fetchLatestReport();
-  }, [requestedOverallDescription, requestedOverallStatus]);
+  }, [noPlantDetected, requestedOverallDescription, requestedOverallStatus]);
 
   useEffect(() => {
     if (loading || hasSavedToGardenRef.current) return;
@@ -301,6 +311,12 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
     toast.success("Report link copied! Shared with family 👨‍👩‍👧");
   };
 
+  const subtitle = loading
+    ? "Loading latest AI report..."
+    : noPlantDetected
+      ? "No plant detected in this image, so Uncle Soon did not load any database report."
+      : `${renderedResults.length} AI tools have analyzed your plant. Overall health: ${overallLabel} ✓`;
+
   return (
     <div ref={ref} className="min-h-screen pb-24 max-w-md mx-auto bg-background">
       {/* Header */}
@@ -324,14 +340,22 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
             </div>
             <div>
               <p className="text-label font-semibold text-foreground">Analysis Complete!</p>
-              <p className="text-caption text-muted-foreground mt-1">
-                {loading
-                  ? "Loading latest AI report..."
-                  : `${renderedResults.length} AI tools have analyzed your plant. Overall health: ${overallLabel} ✓`}
-              </p>
+              <p className="text-caption text-muted-foreground mt-1">{subtitle}</p>
             </div>
           </div>
         </div>
+
+        {noPlantDetected && !loading ? (
+          <div className="bg-card rounded-2xl p-5 card-shadow border border-border space-y-3">
+            <p className="text-label font-semibold text-foreground">No plant detected</p>
+            <p className="text-body text-muted-foreground">
+              Uncle Soon could not find a plant in this photo, so no report data was pulled from the database.
+            </p>
+            <p className="text-caption text-muted-foreground">
+              Try a closer photo with leaves, stem, or fruit clearly in frame.
+            </p>
+          </div>
+        ) : null}
 
         {/* Uncle Soon Message */}
         {uncleSoonMessage && (
@@ -352,6 +376,8 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
           </div>
         )}
 
+        {!noPlantDetected && (
+          <>
         {/* Detailed Results - Horizontal Scrollable Cards */}
         <div className="space-y-4">
           <p className="text-label font-semibold text-foreground">📊 Detailed Analysis</p>
@@ -475,6 +501,8 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
             </div>
           ))}
         </div>
+          </>
+        )}
 
         {/* Action Buttons */}
         <div className="flex gap-3 pt-4">
