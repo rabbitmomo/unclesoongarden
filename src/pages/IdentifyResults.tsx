@@ -229,7 +229,11 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
             : payload.report.uncle_soon_message || normalizedRequestedMessage || ""
         );
         setOverallStatus(payload.report.overall_status || "good");
-        setReportImage((previous) => previous || (payload.report.image_url || "").toString());
+        // Prefer persisted backend image URLs over large in-memory data URLs for reliable mobile storage.
+        setReportImage((previous) => {
+          const backendImage = (payload.report.image_url || "").toString().trim();
+          return backendImage || previous;
+        });
       } catch (error) {
         console.error(error);
         toast.error("Failed to fetch latest report.");
