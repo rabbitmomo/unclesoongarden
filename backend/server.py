@@ -45,6 +45,15 @@ def _build_analysis_failure_message(debug_info: Optional[dict], fallback_message
             return f"Configured Gemini model unavailable. Automatically switched to {fallback_to}. Please retry."
         return "Configured Gemini model is not available for this API version. Set GEMINI_MODEL to gemini-2.5-flash."
 
+    if "UNAVAILABLE" in reason or "high demand" in reason.lower() or "503" in reason:
+        fallback_to = debug_info.get("fallback_to") if isinstance(debug_info, dict) else None
+        if fallback_to:
+            return (
+                f"Primary Gemini model is under high demand. Switched to {fallback_to}; "
+                "please retry in a moment if this persists."
+            )
+        return "Gemini model is under high demand right now. Please retry shortly."
+
     return fallback_message
 
 
@@ -456,6 +465,16 @@ def save_my_garden_result(payload: SaveMyGardenPayload):
     except HTTPException:
         raise
     except Exception as exc:
+        error_text = str(exc)
+        if "row-level security policy" in error_text or "42501" in error_text:
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "My Garden insert blocked by Supabase RLS. "
+                    "Apply the SQL in supabase/my_garden_results.sql to disable RLS/grant demo access, "
+                    "or switch backend DB key to service_role."
+                ),
+            )
         raise HTTPException(status_code=500, detail=f"Failed to save My Garden result: {exc}")
 
 
