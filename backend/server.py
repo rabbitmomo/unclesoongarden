@@ -2,7 +2,7 @@ import os
 import re
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -69,6 +69,7 @@ def get_env_value(name: str) -> str:
 DB_SUPABASE_SECRET_URL = get_env_value("DB_SUPABASE_SECRET_URL")
 DB_SUPABASE_SECRET_KEY = get_env_value("DB_SUPABASE_SECRET_KEY")
 TABLE_NAME = "test_data"
+MY_GARDEN_TABLE = "my_garden_results"
 
 
 def get_supabase_client() -> Client:
@@ -161,6 +162,22 @@ class AnalyzeImageDebugInfo(BaseModel):
 
 class AnalyzeImageResponseWithDebug(AnalyzeImageResponse):
     debug: AnalyzeImageDebugInfo | None = None
+
+
+class SaveMyGardenPayload(BaseModel):
+    device_id: str
+    plant: dict[str, Any]
+
+
+def _as_dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _as_int(value: Any, fallback: int = 0) -> int:
+    try:
+        return int(value)
+    except Exception:
+        return fallback
 
 
 @app.get("/")
@@ -347,6 +364,129 @@ def debug_list_reports():
         }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to list reports: {exc}")
+
+
+@app.get("/api/my-garden")
+def list_my_garden_results(device_id: str):
+    """List My Garden entries for a specific device id."""
+    normalized_device_id = (device_id or "").strip()
+    if not normalized_device_id:
+        raise HTTPException(status_code=400, detail="device_id is required")
+
+    try:
+        supabase = get_supabase_client()
+        rows = (
+            supabase
+            .table(MY_GARDEN_TABLE)
+            .select("*")
+            .eq("device_id", normalized_device_id)
+            .order("analyzed_at", desc=True)
+            .execute()
+            .data
+        ) or []
+
+        plants: list[dict[str, Any]] = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+
+            tracking = _as_dict(row.get("tracking"))
+            snapshot_raw = row.get("analysis_snapshot")
+            snapshot = snapshot_raw if isinstance(snapshot_raw, dict) else None
+
+            plants.append({
+                "id": str(row.get("id") or ""),
+                "name": str(row.get("name") or ""),
+                "image": str(row.get("image") or ""),
+                "overallStatus": str(row.get("overall_status") or "warning"),
+                "overallDescription": row.get("overall_description"),
+                "analyzedAt": str(row.get("analyzed_at") or ""),
+                "tracking": {
+                    "analysisCount": _as_int(tracking.get("analysisCount"), 0),
+                    "recommendationCount": _as_int(tracking.get("recommendationCount"), 0),
+                    "lastCheckedAt": str(tracking.get("lastCheckedAt") or row.get("analyzed_at") or ""),
+                    "growthSummary": tracking.get("growthSummary"),
+                },
+                "analysisSnapshot": snapshot,
+            })
+
+        return {"ok": True, "plants": plants}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to list My Garden results: {exc}")
+
+
+@app.post("/api/my-garden")
+def save_my_garden_result(payload: SaveMyGardenPayload):
+    """Save one My Garden entry scoped to a device id (no-auth demo mode)."""
+    normalized_device_id = (payload.device_id or "").strip()
+    if not normalized_device_id:
+        raise HTTPException(status_code=400, detail="device_id is required")
+
+    plant = payload.plant or {}
+
+    try:
+        supabase = get_supabase_client()
+        row = {
+            "device_id": normalized_device_id,
+            "client_id": str(plant.get("id") or ""),
+            "name": str(plant.get("name") or "Unknown Plant"),
+            "image": str(plant.get("image") or ""),
+            "overall_status": str(plant.get("overallStatus") or "warning"),
+            "overall_description": plant.get("overallDescription"),
+            "analyzed_at": str(plant.get("analyzedAt") or ""),
+            "tracking": plant.get("tracking") if isinstance(plant.get("tracking"), dict) else {},
+            "analysis_snapshot": plant.get("analysisSnapshot") if isinstance(plant.get("analysisSnapshot"), dict) else None,
+        }
+
+        created = (
+            supabase
+            .table(MY_GARDEN_TABLE)
+            .insert(row)
+            .execute()
+            .data
+        ) or []
+
+        created_id = None
+        if created and isinstance(created[0], dict):
+            created_id = created[0].get("id")
+
+        return {"ok": True, "id": created_id}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to save My Garden result: {exc}")
+
+
+@app.delete("/api/my-garden/{record_id}")
+def delete_my_garden_result(record_id: str, device_id: str):
+    """Delete one My Garden entry by id and device id."""
+    normalized_device_id = (device_id or "").strip()
+    if not normalized_device_id:
+        raise HTTPException(status_code=400, detail="device_id is required")
+
+    normalized_record_id = (record_id or "").strip()
+    if not normalized_record_id:
+        raise HTTPException(status_code=400, detail="record_id is required")
+
+    try:
+        supabase = get_supabase_client()
+        deleted = (
+            supabase
+            .table(MY_GARDEN_TABLE)
+            .delete()
+            .eq("id", normalized_record_id)
+            .eq("device_id", normalized_device_id)
+            .execute()
+            .data
+        ) or []
+
+        return {"ok": True, "removed": len(deleted) > 0}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to delete My Garden result: {exc}")
 
 
 @app.post("/api/analyze-image", response_model=AnalyzeImageResponseWithDebug)

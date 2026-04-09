@@ -1,10 +1,11 @@
+import { useEffect, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import StatusBadge from "@/components/StatusBadge";
 import PhotoPromptCard from "@/components/PhotoPromptCard";
 import AIToolResult from "@/components/AIToolResult";
 import DecisionEngine from "@/components/DecisionEngine";
 import { ArrowLeft, Droplets, Sun, Sprout, Calendar, Camera } from "lucide-react";
-import { getMyGardenPlants } from "@/lib/mygarden-storage";
+import { getMyGardenPlants, type MyGardenPlant } from "@/lib/mygarden-storage";
 
 const toDisplayPlantName = (name: string): string =>
   name
@@ -228,7 +229,26 @@ const PlantDetailPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const routeState = location.state as { tempPlantId?: string } | null;
-  const tempGardenPlants = getMyGardenPlants();
+  const [tempGardenPlants, setTempGardenPlants] = useState<MyGardenPlant[]>([]);
+  const [loadingTempPlants, setLoadingTempPlants] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPlants = async () => {
+      const plants = await getMyGardenPlants();
+      if (!cancelled) {
+        setTempGardenPlants(plants);
+        setLoadingTempPlants(false);
+      }
+    };
+
+    void loadPlants();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const tempPlantLookupId = routeState?.tempPlantId || (id === "view" ? tempGardenPlants[0]?.id : id);
   const staticPlant = plantData[id || "1"];
   const tempPlant = tempGardenPlants.find((item) => item.id === tempPlantLookupId);
@@ -341,6 +361,14 @@ const PlantDetailPage = () => {
             "This temporary plant entry is saved from your latest identify result.",
         }
       : undefined);
+
+  if (!staticPlant && loadingTempPlants) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-body-lg">
+        Loading plant...
+      </div>
+    );
+  }
 
   if (!plant) {
     return (

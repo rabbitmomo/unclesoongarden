@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import PlantCard from "@/components/PlantCard";
 import { useNavigate } from "react-router-dom";
 import { Plus, Trash2 } from "lucide-react";
-import { getMyGardenPlants, removeMyGardenPlant } from "@/lib/mygarden-storage";
+import { getMyGardenPlants, removeMyGardenPlant, type MyGardenPlant } from "@/lib/mygarden-storage";
 import { toast } from "sonner";
 
 const defaultPlants: Array<{
@@ -73,10 +73,26 @@ const toDisplayPlantName = (name: string): string =>
 
 const PlantsPage = () => {
   const navigate = useNavigate();
-  const [myGardenPlants, setMyGardenPlants] = useState(() => getMyGardenPlants());
+  const [myGardenPlants, setMyGardenPlants] = useState<MyGardenPlant[]>([]);
+  const [loadingPlants, setLoadingPlants] = useState(true);
 
   useEffect(() => {
-    setMyGardenPlants(getMyGardenPlants());
+    let cancelled = false;
+
+    const loadPlants = async () => {
+      setLoadingPlants(true);
+      const plants = await getMyGardenPlants();
+      if (!cancelled) {
+        setMyGardenPlants(plants);
+        setLoadingPlants(false);
+      }
+    };
+
+    void loadPlants();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const allPlants = useMemo(() => {
@@ -98,14 +114,14 @@ const PlantsPage = () => {
     return [...mappedMyGardenPlants, ...mappedDefaultPlants];
   }, [myGardenPlants]);
 
-  const handleDeletePlant = (plantId: string) => {
-    const result = removeMyGardenPlant(plantId);
+  const handleDeletePlant = async (plantId: string) => {
+    const result = await removeMyGardenPlant(plantId);
     if (!result.removed) {
       toast.error("Unable to delete this plant");
       return;
     }
 
-    setMyGardenPlants(getMyGardenPlants());
+    setMyGardenPlants(await getMyGardenPlants());
     toast.success("Plant removed from My Crops");
   };
 
@@ -113,7 +129,7 @@ const PlantsPage = () => {
     <div className="min-h-screen pb-24 px-4 pt-6 max-w-md mx-auto">
       <h1 className="text-display text-foreground mb-1">My Crops</h1>
       <p className="text-body text-muted-foreground mb-6">
-        {allPlants.length} plants being cared for
+        {loadingPlants ? "Loading plants..." : `${allPlants.length} plants being cared for`}
       </p>
 
       <div className="space-y-3 mb-6">
@@ -139,7 +155,7 @@ const PlantsPage = () => {
                   className="h-8 w-8 rounded-lg border border-border bg-card/95 text-muted-foreground hover:text-destructive active:scale-95 transition-transform flex items-center justify-center"
                   onClick={(event) => {
                     event.stopPropagation();
-                    handleDeletePlant(plant.id);
+                    void handleDeletePlant(plant.id);
                   }}
                   aria-label={`Delete ${plant.name}`}
                   title="Delete"

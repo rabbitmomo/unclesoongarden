@@ -1,3 +1,5 @@
+import { getApiBaseUrl } from "@/lib/api-base-url";
+
 export type IdentifyOverallStatus = "good" | "warning" | "danger";
 
 export interface MyGardenPlant {
@@ -32,9 +34,8 @@ export interface MyGardenPlant {
   };
 }
 
-const MY_GARDEN_KEY = "uncle-soon-mygarden";
-const LEGACY_TEMP_GARDEN_KEY = "uncle-soon-temp-garden";
-const MAX_ITEMS = 20;
+const API_BASE_URL = getApiBaseUrl();
+const DEVICE_ID_KEY = "uncle-soon-device-id";
 
 const isClient = () => typeof window !== "undefined";
 
@@ -55,6 +56,46 @@ const safeSetItem = (key: string, value: string): boolean => {
   } catch {
     return false;
   }
+};
+
+const ensureDeviceCookie = (deviceId: string) => {
+  if (!isClient()) return;
+  try {
+    document.cookie = `uncle_soon_device_id=${deviceId}; path=/; max-age=31536000; samesite=lax`;
+  } catch {
+    // Ignore cookie failures in strict browsers.
+  }
+};
+
+export const getOrCreateDeviceId = (): string => {
+  const existing = safeGetItem(DEVICE_ID_KEY);
+  if (existing) {
+    ensureDeviceCookie(existing);
+    return existing;
+  }
+
+  const generated =
+    (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function")
+      ? crypto.randomUUID()
+      : `dev-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+  safeSetItem(DEVICE_ID_KEY, generated);
+  ensureDeviceCookie(generated);
+  return generated;
+};
+
+const readJsonResponse = async <T,>(response: Response): Promise<T> => {
+  const responseText = await response.text();
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("application/json") && responseText.trimStart().startsWith("<!doctype")) {
+    throw new Error("API returned HTML instead of JSON.");
+  }
+
+  return JSON.parse(responseText) as T;
 };
 
 const isValidStatus = (value: unknown): value is IdentifyOverallStatus =>
@@ -80,60 +121,74 @@ const isMyGardenPlant = (value: unknown): value is MyGardenPlant => {
   );
 };
 
-const parsePlants = (raw: string | null): MyGardenPlant[] => {
-  if (!raw) return [];
+interface ListMyGardenResponse {
+  ok: boolean;
+  plants: MyGardenPlant[];
+}
 
+interface SaveMyGardenResponse {
+  ok: boolean;
+  id?: string | null;
+}
+
+interface RemoveMyGardenResponse {
+  ok: boolean;
+  removed: boolean;
+}
+
+export const getMyGardenPlants = async (): Promise<MyGardenPlant[]> => {
   try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isMyGardenPlant);
-  } catch {
+    const deviceId = getOrCreateDeviceId();
+    const response = await fetch(
+      `${API_BASE_URL}/api/my-garden?device_id=${encodeURIComponent(deviceId)}`
+    );
+    const payload = await readJsonResponse<ListMyGardenResponse>(response);
+    if (!payload.ok || !Array.isArray(payload.plants)) return [];
+    return payload.plants.filter(isMyGardenPlant);
+  } catch (error) {
+    console.error("Failed to load My Garden plants", error);
     return [];
   }
 };
 
-export const getMyGardenPlants = (): MyGardenPlant[] => {
-  const current = parsePlants(safeGetItem(MY_GARDEN_KEY));
-  if (current.length > 0) return current;
-
-  // Backward compatibility: read legacy key if the new key is empty.
-  return parsePlants(safeGetItem(LEGACY_TEMP_GARDEN_KEY));
-};
-
-const setMyGardenPlants = (plants: MyGardenPlant[]) => {
-  return safeSetItem(MY_GARDEN_KEY, JSON.stringify(plants));
-};
-
-export const saveMyGardenPlant = (
+export const saveMyGardenPlant = async (
   plant: MyGardenPlant
-): { saved: boolean; reason?: "storage" } => {
-  const existing = getMyGardenPlants();
-  // Upsert by id so revisiting the same analysis can refresh the saved entry.
-  const deduped = existing.filter((item) => item.id !== plant.id);
-  const updated = [plant, ...deduped].slice(0, MAX_ITEMS);
+): Promise<{ saved: boolean; reason?: "storage" | "network" }> => {
+  try {
+    const deviceId = getOrCreateDeviceId();
+    const response = await fetch(`${API_BASE_URL}/api/my-garden`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        device_id: deviceId,
+        plant,
+      }),
+    });
 
-  if (setMyGardenPlants(updated)) {
-    return { saved: true };
+    const payload = await readJsonResponse<SaveMyGardenResponse>(response);
+    return { saved: Boolean(payload.ok) };
+  } catch (error) {
+    console.error("Failed to save My Garden plant", error);
+    return { saved: false, reason: "network" };
   }
-
-  // If mobile storage quota is tight, keep trimming older entries and retry.
-  const compacted = [...updated];
-  while (compacted.length > 1) {
-    compacted.pop();
-    if (setMyGardenPlants(compacted)) {
-      return { saved: true };
-    }
-  }
-
-  return { saved: false, reason: "storage" };
 };
 
-export const removeMyGardenPlant = (plantId: string): { removed: boolean } => {
-  const existing = getMyGardenPlants();
-  const updated = existing.filter((item) => item.id !== plantId);
+export const removeMyGardenPlant = async (plantId: string): Promise<{ removed: boolean }> => {
+  try {
+    const deviceId = getOrCreateDeviceId();
+    const response = await fetch(
+      `${API_BASE_URL}/api/my-garden/${encodeURIComponent(plantId)}?device_id=${encodeURIComponent(deviceId)}`,
+      {
+        method: "DELETE",
+      }
+    );
 
-  if (updated.length === existing.length) return { removed: false };
-
-  if (!setMyGardenPlants(updated)) return { removed: false };
-  return { removed: true };
+    const payload = await readJsonResponse<RemoveMyGardenResponse>(response);
+    return { removed: Boolean(payload.ok && payload.removed) };
+  } catch (error) {
+    console.error("Failed to remove My Garden plant", error);
+    return { removed: false };
+  }
 };

@@ -193,8 +193,6 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
   const hasSavedToGardenRef = useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
-
     if (noPlantDetected) {
       setAnalysisResults([]);
       setRecommendations([]);
@@ -293,6 +291,8 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
   }, [noPlantDetected, requestedOverallDescription, requestedOverallStatus]);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (loading || hasSavedToGardenRef.current) return;
     if (!reportImage) return;
     if (analysisResults.length === 0) return;
@@ -307,7 +307,7 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
       const optimizedImage = await shrinkImageForStorage(reportImage);
       if (cancelled) return;
 
-      const result = saveMyGardenPlant({
+      const result = await saveMyGardenPlant({
         id: tempPlantId,
         name: toDisplayPlantName(detectedPlantName),
         image: optimizedImage,
