@@ -16,6 +16,7 @@ export interface MyGardenPlant {
     growthSummary?: string;
   };
   analysisSnapshot?: {
+    sourceImage?: string;
     results: Array<{
       icon: string;
       toolName: string;
@@ -36,6 +37,25 @@ export interface MyGardenPlant {
 
 const API_BASE_URL = getApiBaseUrl();
 const DEVICE_ID_KEY = "uncle-soon-device-id";
+
+const normalizeImage = (value: string): string => {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return "";
+
+  if (trimmed.startsWith("data:image/")) return trimmed;
+
+  if (trimmed.startsWith("public/")) {
+    // Normalize project-relative public path to web root path.
+    return `/${trimmed.slice("public/".length)}`;
+  }
+
+  if (/^https?:\/\/(www\.)?example\.com/i.test(trimmed)) {
+    // Reject known placeholder URLs from seed/demo data.
+    return "";
+  }
+
+  return trimmed;
+};
 
 const isClient = () => typeof window !== "undefined";
 
@@ -121,6 +141,14 @@ const isMyGardenPlant = (value: unknown): value is MyGardenPlant => {
   );
 };
 
+const resolveMyGardenImage = (plant: MyGardenPlant): string => {
+  const primaryImage = normalizeImage(plant.image);
+  if (primaryImage) return primaryImage;
+
+  const snapshotImage = normalizeImage(plant.analysisSnapshot?.sourceImage || "");
+  return snapshotImage;
+};
+
 interface ListMyGardenResponse {
   ok: boolean;
   plants: MyGardenPlant[];
@@ -144,7 +172,12 @@ export const getMyGardenPlants = async (): Promise<MyGardenPlant[]> => {
     );
     const payload = await readJsonResponse<ListMyGardenResponse>(response);
     if (!payload.ok || !Array.isArray(payload.plants)) return [];
-    return payload.plants.filter(isMyGardenPlant);
+    return payload.plants
+      .map((plant) => ({
+        ...plant,
+        image: resolveMyGardenImage(plant),
+      }))
+      .filter(isMyGardenPlant);
   } catch (error) {
     console.error("Failed to load My Garden plants", error);
     return [];
@@ -156,6 +189,11 @@ export const saveMyGardenPlant = async (
 ): Promise<{ saved: boolean; reason?: "storage" | "network" }> => {
   try {
     const deviceId = getOrCreateDeviceId();
+    const normalizedImage = normalizeImage(plant.image);
+    if (!normalizedImage) {
+      return { saved: false, reason: "network" };
+    }
+
     const response = await fetch(`${API_BASE_URL}/api/my-garden`, {
       method: "POST",
       headers: {
@@ -163,7 +201,10 @@ export const saveMyGardenPlant = async (
       },
       body: JSON.stringify({
         device_id: deviceId,
-        plant,
+        plant: {
+          ...plant,
+          image: normalizedImage,
+        },
       }),
     });
 

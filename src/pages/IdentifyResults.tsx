@@ -50,9 +50,36 @@ interface LatestReportResponse {
 }
 
 const API_BASE_URL = getApiBaseUrl();
+const LATEST_CAPTURE_KEY = "uncle-soon-latest-capture-image";
 const STORAGE_IMAGE_MAX_DIMENSION = 640;
 const STORAGE_IMAGE_QUALITY = 0.72;
 const STORAGE_IMAGE_LENGTH_THRESHOLD = 160_000;
+
+const isPlaceholderImage = (value: string): boolean => {
+  const normalized = (value || "").trim();
+  if (!normalized) return true;
+  if (/^https?:\/\/(www\.)?example\.com/i.test(normalized)) return true;
+  if (normalized.startsWith("public/")) return true;
+  return false;
+};
+
+const getLatestCaptureImage = (): string => {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.sessionStorage.getItem(LATEST_CAPTURE_KEY) || "";
+  } catch {
+    return "";
+  }
+};
+
+const clearLatestCaptureImage = () => {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(LATEST_CAPTURE_KEY);
+  } catch {
+    // Ignore sessionStorage failures in restricted browsers.
+  }
+};
 
 const readJsonResponse = async <T,>(response: Response): Promise<T> => {
   const responseText = await response.text();
@@ -187,7 +214,10 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [uncleSoonMessage, setUncleSoonMessage] = useState("");
   const [overallStatus, setOverallStatus] = useState("good");
-  const [reportImage, setReportImage] = useState((routeState?.image || "").toString());
+  const [reportImage, setReportImage] = useState(() => {
+    const routeImage = (routeState?.image || "").toString().trim();
+    return routeImage || getLatestCaptureImage();
+  });
   const detectedPlantName = (routeState?.plantName || "").toString();
   const analysisTimestamp = (routeState?.analyzedAt || new Date().toISOString()).toString();
   const hasSavedToGardenRef = useRef(false);
@@ -274,10 +304,12 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
             : payload.report.uncle_soon_message || normalizedRequestedMessage || ""
         );
         setOverallStatus(payload.report.overall_status || "good");
-        // Prefer persisted backend image URLs over large in-memory data URLs for reliable mobile storage.
+        // Keep the captured image as first priority for My Garden cards.
+        // Some historical report rows use placeholder URLs that don't resolve to real images.
         setReportImage((previous) => {
           const backendImage = (payload.report.image_url || "").toString().trim();
-          return backendImage || previous;
+          if (previous) return previous;
+          return isPlaceholderImage(backendImage) ? "" : backendImage;
         });
       } catch (error) {
         console.error(error);
@@ -321,6 +353,7 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
           growthSummary: growthTrackingResult?.result,
         },
         analysisSnapshot: {
+          sourceImage: reportImage,
           results: analysisResults.map((item) => ({
             icon: item.icon,
             toolName: item.toolName,
@@ -337,6 +370,7 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
 
       hasSavedToGardenRef.current = true;
       if (result.saved) {
+        clearLatestCaptureImage();
         toast.success("Saved to My Garden");
       } else {
         toast.error(

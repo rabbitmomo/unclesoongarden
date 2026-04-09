@@ -11,7 +11,6 @@ import google.genai as genai
 DEFAULT_MODEL_NAME = "gemini-2.5-flash"
 FALLBACK_MODELS = [
     "gemini-2.5-flash",
-    "gemini-2.0-flash",
     "gemini-1.5-flash",
 ]
 SYSTEM_PROMPT = (
@@ -127,21 +126,6 @@ def _truncate_debug_text(text: Optional[str], limit: int = 1500) -> str:
     return f"{value[:limit]}... [truncated {len(value) - limit} chars]"
 
 
-def _should_fallback_model(exc_text: str) -> bool:
-    text = (exc_text or "").lower()
-    fallback_markers = [
-        "not_found",
-        "not supported for generatecontent",
-        "unavailable",
-        "high demand",
-        "resource_exhausted",
-        "quota",
-        "429",
-        "503",
-    ]
-    return any(marker in text for marker in fallback_markers)
-
-
 def analyze_crop_image(
     image_path: str,
     custom_prompt: Optional[str] = None,
@@ -240,12 +224,8 @@ def analyze_crop_image(
             except Exception as model_exc:
                 last_model_error = model_exc
                 exc_text = str(model_exc)
-                if _should_fallback_model(exc_text):
-                    debug_info["fallback_trigger_reason"] = _truncate_debug_text(exc_text, limit=400)
-                    print(
-                        f"[analyze_image] Model '{candidate_model}' failed with recoverable error; "
-                        "trying next candidate..."
-                    )
+                if "NOT_FOUND" in exc_text or "not supported for generateContent" in exc_text:
+                    print(f"[analyze_image] Model '{candidate_model}' unavailable, trying next candidate...")
                     continue
                 raise
 

@@ -45,15 +45,6 @@ def _build_analysis_failure_message(debug_info: Optional[dict], fallback_message
             return f"Configured Gemini model unavailable. Automatically switched to {fallback_to}. Please retry."
         return "Configured Gemini model is not available for this API version. Set GEMINI_MODEL to gemini-2.5-flash."
 
-    if "UNAVAILABLE" in reason or "high demand" in reason.lower() or "503" in reason:
-        fallback_to = debug_info.get("fallback_to") if isinstance(debug_info, dict) else None
-        if fallback_to:
-            return (
-                f"Primary Gemini model is under high demand. Switched to {fallback_to}; "
-                "please retry in a moment if this persists."
-            )
-        return "Gemini model is under high demand right now. Please retry shortly."
-
     return fallback_message
 
 
@@ -384,15 +375,11 @@ def list_my_garden_results(device_id: str):
 
     try:
         supabase = get_supabase_client()
-        rows = (
-            supabase
-            .table(MY_GARDEN_TABLE)
-            .select("*")
-            .eq("device_id", normalized_device_id)
-            .order("analyzed_at", desc=True)
-            .execute()
-            .data
-        ) or []
+        rows_raw = supabase.rpc(
+            "list_my_garden_results",
+            {"p_device_id": normalized_device_id},
+        ).execute().data
+        rows = rows_raw if isinstance(rows_raw, list) else []
 
         plants: list[dict[str, Any]] = []
         for row in rows:
@@ -423,6 +410,12 @@ def list_my_garden_results(device_id: str):
     except HTTPException:
         raise
     except Exception as exc:
+        error_text = str(exc)
+        if "Could not find the function public.list_my_garden_results" in error_text or "PGRST202" in error_text:
+            raise HTTPException(
+                status_code=500,
+                detail="Supabase RPC functions are missing. Run supabase/my_garden_results.sql in the Supabase SQL editor, then retry.",
+            )
         raise HTTPException(status_code=500, detail=f"Failed to list My Garden results: {exc}")
 
 
@@ -437,35 +430,42 @@ def save_my_garden_result(payload: SaveMyGardenPayload):
 
     try:
         supabase = get_supabase_client()
-        row = {
-            "device_id": normalized_device_id,
-            "client_id": str(plant.get("id") or ""),
-            "name": str(plant.get("name") or "Unknown Plant"),
-            "image": str(plant.get("image") or ""),
-            "overall_status": str(plant.get("overallStatus") or "warning"),
-            "overall_description": plant.get("overallDescription"),
-            "analyzed_at": str(plant.get("analyzedAt") or ""),
-            "tracking": plant.get("tracking") if isinstance(plant.get("tracking"), dict) else {},
-            "analysis_snapshot": plant.get("analysisSnapshot") if isinstance(plant.get("analysisSnapshot"), dict) else None,
-        }
-
-        created = (
-            supabase
-            .table(MY_GARDEN_TABLE)
-            .insert(row)
-            .execute()
-            .data
-        ) or []
+        saved_row = supabase.rpc(
+            "save_my_garden_result",
+            {
+                "p_device_id": normalized_device_id,
+                "p_client_id": str(plant.get("id") or ""),
+                "p_name": str(plant.get("name") or "Unknown Plant"),
+                "p_image": str(plant.get("image") or ""),
+                "p_overall_status": str(plant.get("overallStatus") or "warning"),
+                "p_overall_description": plant.get("overallDescription"),
+                "p_analyzed_at": str(plant.get("analyzedAt") or ""),
+                "p_tracking": plant.get("tracking") if isinstance(plant.get("tracking"), dict) else {},
+                "p_analysis_snapshot": plant.get("analysisSnapshot") if isinstance(plant.get("analysisSnapshot"), dict) else None,
+            },
+        ).execute().data
 
         created_id = None
-        if created and isinstance(created[0], dict):
-            created_id = created[0].get("id")
+        if isinstance(saved_row, dict):
+            created_id = saved_row.get("id")
+        elif isinstance(saved_row, list) and saved_row and isinstance(saved_row[0], dict):
+            created_id = saved_row[0].get("id")
 
         return {"ok": True, "id": created_id}
     except HTTPException:
         raise
     except Exception as exc:
         error_text = str(exc)
+        if "Could not find the function public.save_my_garden_result" in error_text or "PGRST202" in error_text:
+            raise HTTPException(
+                status_code=500,
+                detail="Supabase RPC functions are missing. Run supabase/my_garden_results.sql in the Supabase SQL editor, then retry.",
+            )
+        if "Could not find the function public.delete_my_garden_result" in error_text or "PGRST202" in error_text:
+            raise HTTPException(
+                status_code=500,
+                detail="Supabase RPC functions are missing. Run supabase/my_garden_results.sql in the Supabase SQL editor, then retry.",
+            )
         if "row-level security policy" in error_text or "42501" in error_text:
             raise HTTPException(
                 status_code=500,
@@ -491,17 +491,12 @@ def delete_my_garden_result(record_id: str, device_id: str):
 
     try:
         supabase = get_supabase_client()
-        deleted = (
-            supabase
-            .table(MY_GARDEN_TABLE)
-            .delete()
-            .eq("id", normalized_record_id)
-            .eq("device_id", normalized_device_id)
-            .execute()
-            .data
-        ) or []
+        deleted = supabase.rpc(
+            "delete_my_garden_result",
+            {"p_record_id": normalized_record_id, "p_device_id": normalized_device_id},
+        ).execute().data
 
-        return {"ok": True, "removed": len(deleted) > 0}
+        return {"ok": True, "removed": bool(deleted)}
     except HTTPException:
         raise
     except Exception as exc:

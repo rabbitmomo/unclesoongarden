@@ -33,6 +33,58 @@ interface AnalyzeImageApiResponse {
 }
 
 const API_BASE_URL = getApiBaseUrl();
+const LATEST_CAPTURE_KEY = "uncle-soon-latest-capture-image";
+const PREVIEW_MAX_DIMENSION = 960;
+const PREVIEW_QUALITY = 0.78;
+
+const persistLatestCaptureImage = (image: string) => {
+  if (typeof window === "undefined" || !image) return;
+  try {
+    window.sessionStorage.setItem(LATEST_CAPTURE_KEY, image);
+  } catch {
+    // Ignore sessionStorage failures in restricted browsers.
+  }
+};
+
+const createCompressedPreviewDataUrl = async (file: File): Promise<string> => {
+  const rawDataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => resolve((event.target?.result as string) || "");
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  if (typeof document === "undefined" || !rawDataUrl.startsWith("data:image/")) {
+    return rawDataUrl;
+  }
+
+  try {
+    const loadedImage = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = rawDataUrl;
+    });
+
+    const scale = Math.min(
+      1,
+      PREVIEW_MAX_DIMENSION / Math.max(loadedImage.width, loadedImage.height)
+    );
+    const width = Math.max(1, Math.round(loadedImage.width * scale));
+    const height = Math.max(1, Math.round(loadedImage.height * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) return rawDataUrl;
+
+    context.drawImage(loadedImage, 0, 0, width, height);
+    return canvas.toDataURL("image/jpeg", PREVIEW_QUALITY);
+  } catch {
+    return rawDataUrl;
+  }
+};
 
 const readJsonResponse = async <T,>(response: Response): Promise<T> => {
   const responseText = await response.text();
@@ -76,23 +128,20 @@ const IdentifyCameraPage = () => {
   };
 
   // Process image file
-  const processImageFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setCapturedImage({
-        url: e.target?.result as string,
-        file,
-      });
-      setMode("preview");
-    };
-    reader.readAsDataURL(file);
+  const processImageFile = async (file: File) => {
+    const previewDataUrl = await createCompressedPreviewDataUrl(file);
+    setCapturedImage({
+      url: previewDataUrl,
+      file,
+    });
+    setMode("preview");
   };
 
   // Handle file input
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      processImageFile(file);
+      void processImageFile(file);
     }
   };
 
@@ -144,6 +193,7 @@ const IdentifyCameraPage = () => {
       setTimeout(() => {
         setAnalyzing(false);
         const resolvedPlantName = (payload.plant_name || sourcePlantName || "").toString().trim();
+        persistLatestCaptureImage(capturedImage.url);
         navigate("/identify-results", {
           state: {
             image: capturedImage.url,
