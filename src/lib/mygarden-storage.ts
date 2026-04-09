@@ -101,17 +101,31 @@ export const getMyGardenPlants = (): MyGardenPlant[] => {
 };
 
 const setMyGardenPlants = (plants: MyGardenPlant[]) => {
-  safeSetItem(MY_GARDEN_KEY, JSON.stringify(plants));
+  return safeSetItem(MY_GARDEN_KEY, JSON.stringify(plants));
 };
 
-export const saveMyGardenPlant = (plant: MyGardenPlant): { saved: boolean } => {
+export const saveMyGardenPlant = (
+  plant: MyGardenPlant
+): { saved: boolean; reason?: "storage" } => {
   const existing = getMyGardenPlants();
-  const duplicate = existing.some((item) => item.id === plant.id);
-  if (duplicate) return { saved: false };
+  // Upsert by id so revisiting the same analysis can refresh the saved entry.
+  const deduped = existing.filter((item) => item.id !== plant.id);
+  const updated = [plant, ...deduped].slice(0, MAX_ITEMS);
 
-  const updated = [plant, ...existing].slice(0, MAX_ITEMS);
-  setMyGardenPlants(updated);
-  return { saved: true };
+  if (setMyGardenPlants(updated)) {
+    return { saved: true };
+  }
+
+  // If mobile storage quota is tight, keep trimming older entries and retry.
+  const compacted = [...updated];
+  while (compacted.length > 1) {
+    compacted.pop();
+    if (setMyGardenPlants(compacted)) {
+      return { saved: true };
+    }
+  }
+
+  return { saved: false, reason: "storage" };
 };
 
 export const removeMyGardenPlant = (plantId: string): { removed: boolean } => {
@@ -120,6 +134,6 @@ export const removeMyGardenPlant = (plantId: string): { removed: boolean } => {
 
   if (updated.length === existing.length) return { removed: false };
 
-  setMyGardenPlants(updated);
+  if (!setMyGardenPlants(updated)) return { removed: false };
   return { removed: true };
 };

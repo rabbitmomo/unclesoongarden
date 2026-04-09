@@ -339,7 +339,11 @@ const IdentifyResultsPage = forwardRef<HTMLDivElement>((_, ref) => {
       if (result.saved) {
         toast.success("Saved to My Garden");
       } else {
-        toast.error("Unable to save this plant on your device.");
+        toast.error(
+          result.reason === "storage"
+            ? "Phone storage is full or restricted. Clear some browser data and try again."
+            : "Unable to save this plant on your device."
+        );
       }
     };
 
